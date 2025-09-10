@@ -438,20 +438,47 @@ export const firebaseService = {
     },
 
     listenToFriends(userId: string, callback: (friends: User[]) => void) {
-        const userRef = db.collection('users').doc(userId);
-        return userRef.onSnapshot(async (userDoc) => {
+        let friendsListener = () => {}; 
+
+        const userListener = db.collection('users').doc(userId).onSnapshot((userDoc) => {
+            friendsListener();
+
             if (userDoc.exists) {
                 const friendIds = userDoc.data()!.friendIds || [];
                 if (friendIds.length === 0) {
                     callback([]);
                     return;
                 }
-                const friends = await this.getUsersByIds(friendIds);
-                callback(friends);
+
+                const chunks = [];
+                for (let i = 0; i < friendIds.length; i += 10) {
+                    chunks.push(friendIds.slice(i, i + 10));
+                }
+                
+                const allFriends: { [id: string]: User } = {};
+                let activeListeners = chunks.length;
+
+                const unsubscribes = chunks.map(chunk => {
+                    const q = db.collection('users').where(firebase.firestore.FieldPath.documentId(), 'in', chunk);
+                    return q.onSnapshot(snapshot => {
+                        snapshot.docs.forEach(doc => {
+                            allFriends[doc.id] = docToUser(doc);
+                        });
+                        callback(Object.values(allFriends));
+                    });
+                });
+
+                friendsListener = () => unsubscribes.forEach(unsub => unsub());
+
             } else {
                 callback([]);
             }
         });
+        
+        return () => {
+            userListener();
+            friendsListener();
+        };
     },
 
     async getCommonFriends(userId1: string, userId2: string): Promise<User[]> {

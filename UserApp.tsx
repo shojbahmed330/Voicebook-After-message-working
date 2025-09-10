@@ -174,6 +174,9 @@ const UserApp: React.FC = () => {
   const [minimizedChats, setMinimizedChats] = useState<Set<string>>(new Set());
   const [chatUnreadCounts, setChatUnreadCounts] = useState<Record<string, number>>({});
   
+  const userRef = useRef(user);
+  userRef.current = user;
+  
   const notificationPanelRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null); // To hold the active speech recognition instance
@@ -218,8 +221,9 @@ const UserApp: React.FC = () => {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    if (user) {
-        await firebaseService.updateUserOnlineStatus(user.id, 'offline');
+    const currentUserForLogout = userRef.current;
+    if (currentUserForLogout) {
+        await firebaseService.updateUserOnlineStatus(currentUserForLogout.id, 'offline');
     }
     firebaseService.signOutUser();
     setUser(null);
@@ -229,19 +233,20 @@ const UserApp: React.FC = () => {
     setGroups([]);
     setNotifications([]);
     setViewStack([{ view: AppView.AUTH }]);
-  }, [user]);
+  }, []);
   
   useEffect(() => {
       const handleBeforeUnload = () => {
-          if (user) {
-              firebaseService.updateUserOnlineStatus(user.id, 'offline');
+          const currentUserForUnload = userRef.current;
+          if (currentUserForUnload) {
+              firebaseService.updateUserOnlineStatus(currentUserForUnload.id, 'offline');
           }
       };
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => {
           window.removeEventListener('beforeunload', handleBeforeUnload);
       };
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     let unsubscribePosts: () => void = () => {};
