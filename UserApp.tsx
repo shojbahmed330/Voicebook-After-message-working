@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -340,22 +341,36 @@ const UserApp: React.FC = () => {
     let unsubscribes: (()=>void)[] = [];
     
     setIsLoadingFeed(true);
-    // The listenToFeedPosts function is efficient and uses the IDs in its query.
+    // This listener for the feed is efficient and uses the friend/block lists in its query logic.
     const unsubscribePosts = firebaseService.listenToFeedPosts(user.id, userFriendIds, userBlockedIds, (feedPosts) => {
         setPosts(feedPosts);
         setIsLoadingFeed(false);
     });
     unsubscribes.push(unsubscribePosts);
     
-    // The listenToFriends function sets up listeners for each friend's online status.
-    const unsubscribeFriends = firebaseService.listenToFriends(user.id, setFriends);
-    unsubscribes.push(unsubscribeFriends);
+    // --- POLLING LOGIC FOR FRIENDS' ONLINE STATUS ---
+    // This replaces the expensive real-time listener to prevent quota issues.
+    let isMounted = true;
+    const fetchFriends = async () => {
+        if (!user?.id) return;
+        try {
+            const friendsData = await firebaseService.getFriends(user.id);
+            if (isMounted) {
+                setFriends(friendsData);
+            }
+        } catch (error) {
+            console.error("Failed to fetch friends list:", error);
+        }
+    };
 
+    fetchFriends(); // Initial fetch
+    const friendsInterval = setInterval(fetchFriends, 30000); // Poll every 30 seconds
+    
     return () => {
+        isMounted = false;
+        clearInterval(friendsInterval);
         unsubscribes.forEach(unsub => unsub());
     };
-    // By stringifying the arrays, we ensure this effect only runs when the list of friends or blocked users actually changes,
-    // not on every minor user profile update (like lastActiveTimestamp). This is the key fix for the quota issue.
   }, [user?.id, JSON.stringify(userFriendIds), JSON.stringify(userBlockedIds)]);
 
 

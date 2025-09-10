@@ -438,60 +438,12 @@ export const firebaseService = {
         });
     },
 
-    listenToFriends(userId: string, callback: (friends: User[]) => void) {
-        let friendsListener = () => {};
-        let currentFriendIds: string[] = []; // Keep track of the current IDs to avoid re-subscribing unnecessarily
-
-        const userListener = db.collection('users').doc(userId).onSnapshot((userDoc) => {
-            if (!userDoc.exists) {
-                callback([]);
-                return;
-            }
-
-            const newFriendIds = userDoc.data()!.friendIds || [];
-
-            // Compare the new list of IDs with the old one.
-            const idsHaveChanged = newFriendIds.length !== currentFriendIds.length || newFriendIds.some((id, index) => id !== currentFriendIds[index]);
-
-            // Only re-subscribe if the friend list has actually changed.
-            if (!idsHaveChanged) {
-                return;
-            }
-
-            currentFriendIds = newFriendIds;
-            friendsListener(); // Clean up old listeners before creating new ones.
-
-            if (currentFriendIds.length === 0) {
-                callback([]);
-                return;
-            }
-
-            const chunks = [];
-            for (let i = 0; i < currentFriendIds.length; i += 10) {
-                chunks.push(currentFriendIds.slice(i, i + 10));
-            }
-
-            const allFriends: { [id: string]: User } = {};
-
-            const unsubscribes = chunks.map(chunk => {
-                const q = db.collection('users').where(firebase.firestore.FieldPath.documentId(), 'in', chunk);
-                return q.onSnapshot(snapshot => {
-                    snapshot.docs.forEach(doc => {
-                        allFriends[doc.id] = docToUser(doc);
-                    });
-                    
-                    const currentFriendsList = currentFriendIds.map(id => allFriends[id]).filter(Boolean);
-                    callback(currentFriendsList);
-                });
-            });
-
-            friendsListener = () => unsubscribes.forEach(unsub => unsub());
-        });
-        
-        return () => {
-            userListener();
-            friendsListener();
-        };
+    async getFriends(userId: string): Promise<User[]> {
+        const user = await this.getUserProfileById(userId);
+        if (!user || !user.friendIds || user.friendIds.length === 0) {
+            return [];
+        }
+        return this.getUsersByIds(user.friendIds);
     },
 
     async getCommonFriends(userId1: string, userId2: string): Promise<User[]> {
