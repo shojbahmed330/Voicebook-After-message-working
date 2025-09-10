@@ -1,14 +1,11 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { LiveVideoRoom, User, VideoParticipantState } from '../types';
 import { geminiService } from '../services/geminiService';
 import Icon from './Icon';
 import { getTtsPrompt, AGORA_APP_ID } from '../constants';
+import AgoraRTC from 'agora-rtc-sdk-ng';
 import type { IAgoraRTCClient, IAgoraRTCRemoteUser, IMicrophoneAudioTrack, ICameraVideoTrack } from 'agora-rtc-sdk-ng';
 import { useSettings } from '../contexts/SettingsContext';
-
-// Let TypeScript know about the AgoraRTC global variable
-declare const AgoraRTC: any;
 
 interface LiveVideoRoomScreenProps {
   currentUser: User;
