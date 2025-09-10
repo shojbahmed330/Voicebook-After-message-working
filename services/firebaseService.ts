@@ -28,6 +28,9 @@ const docToUser = (doc: firebase.firestore.DocumentSnapshot): User => {
     if (user.commentingSuspendedUntil && user.commentingSuspendedUntil instanceof firebase.firestore.Timestamp) {
         user.commentingSuspendedUntil = user.commentingSuspendedUntil.toDate().toISOString();
     }
+     if (user.lastActiveTimestamp && user.lastActiveTimestamp instanceof firebase.firestore.Timestamp) {
+        user.lastActiveTimestamp = user.lastActiveTimestamp.toDate().toISOString();
+    }
     
     return user;
 }
@@ -154,6 +157,8 @@ export const firebaseService = {
                     voiceCoins: 100,
                     friendIds: [],
                     createdAt: serverTimestamp(),
+                    onlineStatus: 'offline',
+                    lastActiveTimestamp: serverTimestamp(),
                 };
                 
                 await userRef.set(newUserProfile);
@@ -196,6 +201,20 @@ export const firebaseService = {
     },
     
     signOutUser: () => auth.signOut(),
+
+    async updateUserOnlineStatus(userId: string, status: 'online' | 'offline'): Promise<void> {
+        const userRef = db.collection('users').doc(userId);
+        try {
+            const updateData: { onlineStatus: string; lastActiveTimestamp?: any } = { onlineStatus: status };
+            if (status === 'offline') {
+                updateData.lastActiveTimestamp = serverTimestamp();
+            }
+            await userRef.update(updateData);
+        } catch (error) {
+            // This can happen if the user logs out and rules prevent writes. It's okay to ignore.
+            console.log(`Could not update online status for user ${userId}:`, error.message);
+        }
+    },
 
     // --- Notifications ---
     listenToNotifications(userId: string, callback: (notifications: Notification[]) => void) {
@@ -428,11 +447,7 @@ export const firebaseService = {
                     return;
                 }
                 const friends = await this.getUsersByIds(friendIds);
-                const friendsWithStatus = friends.map((friend, index) => ({
-                    ...friend,
-                    onlineStatus: index % 3 === 0 ? 'online' : 'offline',
-                }));
-                callback(friendsWithStatus);
+                callback(friends);
             } else {
                 callback([]);
             }

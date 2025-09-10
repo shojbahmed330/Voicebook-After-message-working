@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -218,7 +217,10 @@ const UserApp: React.FC = () => {
     setIsLoadingViewerPost(false);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    if (user) {
+        await firebaseService.updateUserOnlineStatus(user.id, 'offline');
+    }
     firebaseService.signOutUser();
     setUser(null);
     setPosts([]);
@@ -227,7 +229,19 @@ const UserApp: React.FC = () => {
     setGroups([]);
     setNotifications([]);
     setViewStack([{ view: AppView.AUTH }]);
-  }, []);
+  }, [user]);
+  
+  useEffect(() => {
+      const handleBeforeUnload = () => {
+          if (user) {
+              firebaseService.updateUserOnlineStatus(user.id, 'offline');
+          }
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+  }, [user]);
 
   useEffect(() => {
     let unsubscribePosts: () => void = () => {};
@@ -248,6 +262,7 @@ const UserApp: React.FC = () => {
         unsubscribeAcceptedRequests();
 
         if (userAuth) {
+            await firebaseService.updateUserOnlineStatus(userAuth.id, 'online');
             let isFirstLoad = true;
             unsubscribeUserDoc = firebaseService.listenToCurrentUser(userAuth.id, async (userProfile) => {
                 if (userProfile && !userProfile.isDeactivated && !userProfile.isBanned) {

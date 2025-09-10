@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User } from '../types';
 
@@ -6,6 +5,24 @@ interface ContactsPanelProps {
   friends: User[];
   onOpenConversation: (peer: User) => void;
 }
+
+const formatTimeAgo = (isoString?: string): string => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return `Just now`;
+    
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+};
+
 
 const ContactsPanel: React.FC<ContactsPanelProps> = ({ friends, onOpenConversation }) => {
   const onlineFriends = friends.filter(f => f.onlineStatus === 'online');
@@ -35,7 +52,12 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({ friends, onOpenConversati
                         }`}
                       />
                     </div>
-                    <span className="text-lime-300 truncate">{friend.name}</span>
+                    <span className="text-lime-300 truncate flex-grow">{friend.name}</span>
+                    {friend.onlineStatus !== 'online' && friend.lastActiveTimestamp && (
+                        <span className="text-xs text-slate-500 flex-shrink-0">
+                            {formatTimeAgo(friend.lastActiveTimestamp)}
+                        </span>
+                    )}
                   </button>
                 </li>
               ))}
