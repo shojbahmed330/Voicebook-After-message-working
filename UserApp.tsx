@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -140,6 +141,7 @@ const UserApp: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [globalAuthError, setGlobalAuthError] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const [friends, setFriends] = useState<User[]>([]);
   const [friendRequests, setFriendRequests] = useState<User[]>([]);
@@ -189,6 +191,10 @@ const UserApp: React.FC = () => {
       return friendRequests.filter(r => r && !friendIds.has(r.id)).length;
   }, [friendRequests, friendIds]);
 
+  const userFriendIds = useMemo(() => user?.friendIds || [], [user?.friendIds]);
+  const userBlockedIds = useMemo(() => user?.blockedUserIds || [], [user?.blockedUserIds]);
+
+
   useEffect(() => {
     if (!user) return;
     const unsubscribe = firebaseService.listenToConversations(user.id, (convos) => {
@@ -226,13 +232,6 @@ const UserApp: React.FC = () => {
         await firebaseService.updateUserOnlineStatus(currentUserForLogout.id, 'offline');
     }
     firebaseService.signOutUser();
-    setUser(null);
-    setPosts([]);
-    setFriends([]);
-    setFriendRequests([]);
-    setGroups([]);
-    setNotifications([]);
-    setViewStack([{ view: AppView.AUTH }]);
   }, []);
   
   useEffect(() => {
@@ -248,104 +247,103 @@ const UserApp: React.FC = () => {
       };
   }, []);
 
+  // Effect 1: Handles authentication state changes. Only sets the current user ID or handles logout.
   useEffect(() => {
-    let unsubscribePosts: () => void = () => {};
-    let unsubscribeReelsPosts: () => void = () => {};
-    let unsubscribeFriends: () => void = () => {};
-    let unsubscribeFriendRequests: () => void = () => {};
-    let unsubscribeNotifications: () => void = () => {};
-    let unsubscribeUserDoc: () => void = () => {};
-    let unsubscribeAcceptedRequests: () => void = () => {};
-
-    const unsubscribeAuth = firebaseService.onAuthStateChanged(async (userAuth) => {
-        unsubscribePosts();
-        unsubscribeReelsPosts();
-        unsubscribeFriends();
-        unsubscribeFriendRequests();
-        unsubscribeNotifications();
-        unsubscribeUserDoc();
-        unsubscribeAcceptedRequests();
-
-        if (userAuth) {
-            await firebaseService.updateUserOnlineStatus(userAuth.id, 'online');
-            let isFirstLoad = true;
-            unsubscribeUserDoc = firebaseService.listenToCurrentUser(userAuth.id, async (userProfile) => {
-                if (userProfile && !userProfile.isDeactivated && !userProfile.isBanned) {
-                    setUser(userProfile);
-
-                    if (isFirstLoad) {
-                         if (!initialDeepLink) {
-                            setTtsMessage(getTtsPrompt('login_success', language, { name: userProfile.name }));
-                        }
-                        if (initialDeepLink) {
-                            setViewStack([initialDeepLink]);
-                            setInitialDeepLink(null);
-                        } else if (currentView?.view === AppView.AUTH) {
-                            setViewStack([{ view: AppView.FEED }]);
-                        }
-                        isFirstLoad = false;
-                    }
-                } else {
-                    if (userProfile?.isDeactivated) console.log(`User ${userAuth.id} is deactivated. Signing out.`);
-                    if (userProfile?.isBanned) console.log(`User ${userAuth.id} is banned. Signing out.`);
-                    handleLogout();
-                }
-                setIsAuthLoading(false);
-            });
-
-            setIsLoadingFeed(true);
-            setIsLoadingReels(true);
-            unsubscribePosts = firebaseService.listenToFeedPosts(userAuth.id, (feedPosts) => {
-                setPosts(feedPosts);
-                setIsLoadingFeed(false);
-            });
-            unsubscribeReelsPosts = firebaseService.listenToReelsPosts((newReelsPosts) => {
-                setReelsPosts(newReelsPosts);
-                setIsLoadingReels(false);
-            });
-            unsubscribeFriends = firebaseService.listenToFriends(userAuth.id, (friendsList) => {
-                setFriends(friendsList);
-            });
-            unsubscribeFriendRequests = firebaseService.listenToFriendRequests(userAuth.id, (requests) => {
-                setFriendRequests(requests);
-            });
-            unsubscribeNotifications = firebaseService.listenToNotifications(userAuth.id, (newNotifications) => {
-                setNotifications(newNotifications);
-            });
-            
-            unsubscribeAcceptedRequests = firebaseService.listenToAcceptedFriendRequests(userAuth.id, (acceptedRequests) => {
-                if (acceptedRequests.length > 0) {
-                    console.log("Processing accepted friend requests:", acceptedRequests);
-                    acceptedRequests.forEach(request => {
-                        firebaseService.finalizeFriendship(userAuth.id, request.to);
-                    });
-                }
-            });
-
-        } else {
+    const unsubscribeAuth = firebaseService.onAuthStateChanged((userAuth) => {
+        setCurrentUserId(userAuth?.id || null);
+        if (!userAuth) {
             setUser(null);
             setPosts([]);
-            setReelsPosts([]);
             setFriends([]);
             setFriendRequests([]);
+            setGroups([]);
             setNotifications([]);
             setViewStack([{ view: AppView.AUTH }]);
             setIsAuthLoading(false);
+        } else {
+            setIsAuthLoading(true);
         }
     });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Effect 2: Listens to the current user's profile document once we have a user ID.
+  useEffect(() => {
+      if (!currentUserId) return;
+
+      let isFirstLoad = true;
+      const unsubscribeUserDoc = firebaseService.listenToCurrentUser(currentUserId, async (userProfile) => {
+          if (userProfile && !userProfile.isDeactivated && !userProfile.isBanned) {
+              if(userProfile.onlineStatus !== 'online') {
+                await firebaseService.updateUserOnlineStatus(userProfile.id, 'online');
+              }
+              setUser(userProfile);
+
+              if (isFirstLoad) {
+                  if (!initialDeepLink) {
+                      setTtsMessage(getTtsPrompt('login_success', language, { name: userProfile.name }));
+                  }
+                  if (initialDeepLink) {
+                      setViewStack([initialDeepLink]);
+                      setInitialDeepLink(null);
+                  } else if (currentView?.view === AppView.AUTH) {
+                      setViewStack([{ view: AppView.FEED }]);
+                  }
+                  isFirstLoad = false;
+              }
+          } else {
+              if (userProfile?.isDeactivated) console.log(`User ${currentUserId} is deactivated. Signing out.`);
+              if (userProfile?.isBanned) console.log(`User ${currentUserId} is banned. Signing out.`);
+              handleLogout();
+          }
+          setIsAuthLoading(false);
+      });
+      
+      return () => unsubscribeUserDoc();
+  }, [currentUserId, initialDeepLink, language, handleLogout]);
+
+  // Effect 3: Manages data subscriptions that depend on the user object (e.g., feed, friends).
+  useEffect(() => {
+    if (!user) return;
+
+    let unsubscribes: (()=>void)[] = [];
+    
+    setIsLoadingFeed(true);
+    const unsubscribePosts = firebaseService.listenToFeedPosts(user.id, userFriendIds, userBlockedIds, (feedPosts) => {
+        setPosts(feedPosts);
+        setIsLoadingFeed(false);
+    });
+    unsubscribes.push(unsubscribePosts);
+    
+    setIsLoadingReels(true);
+    const unsubscribeReelsPosts = firebaseService.listenToReelsPosts((newReelsPosts) => {
+        setReelsPosts(newReelsPosts);
+        setIsLoadingReels(false);
+    });
+    unsubscribes.push(unsubscribeReelsPosts);
+    
+    const unsubscribeFriends = firebaseService.listenToFriends(user.id, setFriends);
+    unsubscribes.push(unsubscribeFriends);
+
+    const unsubscribeFriendRequests = firebaseService.listenToFriendRequests(user.id, setFriendRequests);
+    unsubscribes.push(unsubscribeFriendRequests);
+
+    const unsubscribeNotifications = firebaseService.listenToNotifications(user.id, setNotifications);
+    unsubscribes.push(unsubscribeNotifications);
+    
+    const unsubscribeAcceptedRequests = firebaseService.listenToAcceptedFriendRequests(user.id, (acceptedRequests) => {
+        if (acceptedRequests.length > 0) {
+            acceptedRequests.forEach(request => {
+                firebaseService.finalizeFriendship(user.id, request.to);
+            });
+        }
+    });
+    unsubscribes.push(unsubscribeAcceptedRequests);
 
     return () => {
-        unsubscribeAuth();
-        unsubscribePosts();
-        unsubscribeReelsPosts();
-        unsubscribeFriends();
-        unsubscribeFriendRequests();
-        unsubscribeNotifications();
-        unsubscribeUserDoc();
-        unsubscribeAcceptedRequests();
-        handleClosePhotoViewer();
+        unsubscribes.forEach(unsub => unsub());
     };
-  }, [initialDeepLink, language, handleClosePhotoViewer, handleLogout]);
+  }, [user?.id, userFriendIds, userBlockedIds]);
 
   useEffect(() => {
     setTtsMessage(getTtsPrompt('welcome', language));

@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -515,13 +516,9 @@ export const firebaseService = {
     },
 
     // --- Posts ---
-    listenToFeedPosts(currentUserId: string, callback: (posts: Post[]) => void) {
+    listenToFeedPosts(currentUserId: string, friendIds: string[], blockedUserIds: string[], callback: (posts: Post[]) => void) {
         const q = db.collection('posts').orderBy('createdAt', 'desc').limit(50);
         return q.onSnapshot(async (snapshot) => {
-            const userDoc = await db.collection('users').doc(currentUserId).get();
-            const friendIds = userDoc.exists ? userDoc.data()!.friendIds || [] : [];
-            const blockedUserIds = userDoc.exists ? userDoc.data()!.blockedUserIds || [] : [];
-    
             const feedPosts = snapshot.docs.map(docToPost);
     
             const filtered = feedPosts.filter(p => {

@@ -345,8 +345,9 @@ export const geminiService = {
   },
   
   // --- Posts ---
-  listenToFeedPosts(currentUserId: string, callback: (posts: Post[]) => void) {
-      return firebaseService.listenToFeedPosts(currentUserId, callback);
+  // FIX: Updated function signature to include missing parameters `friendIds` and `blockedUserIds` to match the underlying firebaseService call.
+  listenToFeedPosts(currentUserId: string, friendIds: string[], blockedUserIds: string[], callback: (posts: Post[]) => void) {
+      return firebaseService.listenToFeedPosts(currentUserId, friendIds, blockedUserIds, callback);
   },
 
    // --- Messages ---
