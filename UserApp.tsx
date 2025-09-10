@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -186,13 +185,12 @@ const UserApp: React.FC = () => {
   const currentView = viewStack[viewStack.length - 1];
   const unreadNotificationCount = notifications.filter(n => !n.read).length;
 
-  const friendIds = useMemo(() => new Set(friends.map(f => f.id)), [friends]);
-  const friendRequestCount = useMemo(() => {
-      return friendRequests.filter(r => r && !friendIds.has(r.id)).length;
-  }, [friendRequests, friendIds]);
-
   const userFriendIds = useMemo(() => user?.friendIds || [], [user?.friendIds]);
   const userBlockedIds = useMemo(() => user?.blockedUserIds || [], [user?.blockedUserIds]);
+  
+  const friendRequestCount = useMemo(() => {
+      return friendRequests.filter(r => r && r.id && !userFriendIds.includes(r.id)).length;
+  }, [friendRequests, userFriendIds]);
 
 
   useEffect(() => {
@@ -272,11 +270,10 @@ const UserApp: React.FC = () => {
       if (!currentUserId) return;
 
       let isFirstLoad = true;
+      firebaseService.updateUserOnlineStatus(currentUserId, 'online');
+
       const unsubscribeUserDoc = firebaseService.listenToCurrentUser(currentUserId, async (userProfile) => {
           if (userProfile && !userProfile.isDeactivated && !userProfile.isBanned) {
-              if(userProfile.onlineStatus !== 'online') {
-                await firebaseService.updateUserOnlineStatus(userProfile.id, 'online');
-              }
               setUser(userProfile);
 
               if (isFirstLoad) {
@@ -302,18 +299,11 @@ const UserApp: React.FC = () => {
       return () => unsubscribeUserDoc();
   }, [currentUserId, initialDeepLink, language, handleLogout]);
 
-  // Effect 3: Manages data subscriptions that depend on the user object (e.g., feed, friends).
+  // Effect 3: Manages data subscriptions that depend only on the user's ID.
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     let unsubscribes: (()=>void)[] = [];
-    
-    setIsLoadingFeed(true);
-    const unsubscribePosts = firebaseService.listenToFeedPosts(user.id, userFriendIds, userBlockedIds, (feedPosts) => {
-        setPosts(feedPosts);
-        setIsLoadingFeed(false);
-    });
-    unsubscribes.push(unsubscribePosts);
     
     setIsLoadingReels(true);
     const unsubscribeReelsPosts = firebaseService.listenToReelsPosts((newReelsPosts) => {
@@ -322,9 +312,6 @@ const UserApp: React.FC = () => {
     });
     unsubscribes.push(unsubscribeReelsPosts);
     
-    const unsubscribeFriends = firebaseService.listenToFriends(user.id, setFriends);
-    unsubscribes.push(unsubscribeFriends);
-
     const unsubscribeFriendRequests = firebaseService.listenToFriendRequests(user.id, setFriendRequests);
     unsubscribes.push(unsubscribeFriendRequests);
 
@@ -343,7 +330,34 @@ const UserApp: React.FC = () => {
     return () => {
         unsubscribes.forEach(unsub => unsub());
     };
-  }, [user?.id, userFriendIds, userBlockedIds]);
+  }, [user?.id]);
+
+  // Effect 4: Manages data subscriptions that depend on friend/block lists.
+  // This effect will ONLY re-run if the content of friendIds or blockedUserIds changes.
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let unsubscribes: (()=>void)[] = [];
+    
+    setIsLoadingFeed(true);
+    // The listenToFeedPosts function is efficient and uses the IDs in its query.
+    const unsubscribePosts = firebaseService.listenToFeedPosts(user.id, userFriendIds, userBlockedIds, (feedPosts) => {
+        setPosts(feedPosts);
+        setIsLoadingFeed(false);
+    });
+    unsubscribes.push(unsubscribePosts);
+    
+    // The listenToFriends function sets up listeners for each friend's online status.
+    const unsubscribeFriends = firebaseService.listenToFriends(user.id, setFriends);
+    unsubscribes.push(unsubscribeFriends);
+
+    return () => {
+        unsubscribes.forEach(unsub => unsub());
+    };
+    // By stringifying the arrays, we ensure this effect only runs when the list of friends or blocked users actually changes,
+    // not on every minor user profile update (like lastActiveTimestamp). This is the key fix for the quota issue.
+  }, [user?.id, JSON.stringify(userFriendIds), JSON.stringify(userBlockedIds)]);
+
 
   useEffect(() => {
     setTtsMessage(getTtsPrompt('welcome', language));
