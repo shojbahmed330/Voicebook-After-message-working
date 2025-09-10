@@ -1,15 +1,14 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Post, User, ScrollState, Campaign, AppView, Story } from './types';
-import { PostCard } from './components/PostCard';
-import CreatePostWidget from './components/CreatePostWidget';
-import SkeletonPostCard from './components/SkeletonPostCard';
-import { geminiService } from './services/geminiService';
-import RewardedAdWidget from './components/RewardedAdWidget';
-import { getTtsPrompt } from './constants';
-import StoriesTray from './components/StoriesTray';
-import { firebaseService } from './services/firebaseService';
-import { useSettings } from './contexts/SettingsContext';
+import { Post, User, ScrollState, Campaign, AppView, Story, Comment } from '../types';
+import { PostCard } from './PostCard';
+import CreatePostWidget from './CreatePostWidget';
+import SkeletonPostCard from './SkeletonPostCard';
+import { geminiService } from '../services/geminiService';
+import RewardedAdWidget from './RewardedAdWidget';
+import { getTtsPrompt } from '../constants';
+import StoriesTray from './StoriesTray';
+import { firebaseService } from '../services/firebaseService';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface FeedScreenProps {
   isLoading: boolean;
@@ -24,10 +23,10 @@ interface FeedScreenProps {
   onRewardedAdClick: (campaign: Campaign) => void;
   onAdViewed: (campaignId: string) => void;
   onAdClick: (post: Post) => void;
-  onStartComment: (postId: string) => void;
+  onStartComment: (postId: string, commentToReplyTo?: Comment) => void;
   onSharePost: (post: Post) => void;
+  onOpenPhotoViewer: (post: Post) => void;
   
-  // New props for handling all commands locally
   onCommandProcessed: () => void;
   scrollState: ScrollState;
   onSetScrollState: (state: ScrollState) => void;
@@ -40,7 +39,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     isLoading, posts: initialPosts, currentUser, onSetTtsMessage, lastCommand, onOpenProfile,
     onViewPost, onReactToPost, onStartCreatePost, onRewardedAdClick, onAdViewed,
     onAdClick, onCommandProcessed, scrollState, onSetScrollState, onNavigate, friends, setSearchResults,
-    onStartComment, onSharePost
+    onStartComment, onSharePost, onOpenPhotoViewer
 }) => {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [adInjected, setAdInjected] = useState(false);
@@ -55,8 +54,10 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const isInitialLoad = useRef(true);
   const isProgrammaticScroll = useRef(false);
+  const currentPostIndexRef = useRef(currentPostIndex);
+  currentPostIndexRef.current = currentPostIndex;
 
-   useEffect(() => {
+  useEffect(() => {
     setPosts(initialPosts);
     setAdInjected(false); // Reset ad injection when initial posts change
   }, [initialPosts]);
@@ -67,9 +68,23 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   }, []);
   
   const fetchStories = useCallback(async () => {
-      const stories = await geminiService.getStories(currentUser.id);
-      setStoriesByAuthor(stories);
-  }, [currentUser.id]);
+      const realStories = await geminiService.getStories(currentUser.id);
+      const adStory = await firebaseService.getInjectableStoryAd(currentUser);
+  
+      if (adStory) {
+          const adStoryGroup = {
+              author: adStory.author,
+              stories: [adStory],
+              allViewed: false, // Doesn't apply to ads
+          };
+          // Inject the ad story at the second position
+          const combinedStories = [...realStories];
+          combinedStories.splice(1, 0, adStoryGroup);
+          setStoriesByAuthor(combinedStories);
+      } else {
+          setStoriesByAuthor(realStories);
+      }
+  }, [currentUser]);
 
   useEffect(() => {
     if (!isLoading && posts.length > 0 && isInitialLoad.current) {
@@ -83,7 +98,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         fetchStories();
     }
   }, [isLoading, fetchRewardedCampaign, fetchStories]);
-  
+
   useEffect(() => {
     const injectAd = async () => {
         if (!isLoading && !adInjected && posts.length > 2) {
@@ -100,7 +115,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     injectAd();
   }, [isLoading, posts, adInjected, currentUser]);
 
-  // Handle continuous scrolling via voice command
   useEffect(() => {
     const scrollContainer = feedContainerRef.current;
     if (!scrollContainer || scrollState === 'none') {
@@ -134,7 +148,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         const { intent, slots } = intentResponse;
 
         switch (intent) {
-          // --- Feed Specific Intents ---
           case 'intent_next_post':
             isProgrammaticScroll.current = true;
             setCurrentPostIndex(prev => (prev < 0 ? 0 : (prev + 1) % posts.length));
@@ -190,8 +203,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 onViewPost(posts[currentPostIndex].id);
             }
             break;
-
-          // --- Global Intents Handled Here ---
           case 'intent_add_text_to_story':
             if (slots?.text) {
                 onNavigate(AppView.CREATE_STORY, { initialText: slots.text as string });
@@ -214,7 +225,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
               onStartCreatePost({ startRecording: true });
               break;
           case 'intent_open_feed':
-              onNavigate(AppView.FEED); // This essentially does nothing but confirms the view
+              onNavigate(AppView.FEED);
               break;
           case 'intent_open_ads_center':
               onNavigate(AppView.ADS_CENTER);
@@ -283,7 +294,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     }
   }, [lastCommand, handleCommand]);
 
-  // Effect for PROGRAMMATIC scrolling (when voice command changes index)
   useEffect(() => {
     if (isInitialLoad.current || posts.length === 0 || currentPostIndex < 0 || !isProgrammaticScroll.current) return;
 
@@ -292,13 +302,12 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         const scrollTimeout = setTimeout(() => {
             isProgrammaticScroll.current = false;
-        }, 1000); // Allow time for scroll animation to finish
+        }, 1000); 
         
         return () => clearTimeout(scrollTimeout);
     }
   }, [currentPostIndex, posts]);
 
-  // Effect for tracking ad views and other logic when active post changes
   useEffect(() => {
     if (isInitialLoad.current || posts.length === 0 || currentPostIndex < 0) return;
     
@@ -308,7 +317,6 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
     }
   }, [currentPostIndex, posts, onAdViewed]);
 
-  // Effect for MANUAL scrolling detection using IntersectionObserver
   useEffect(() => {
     const observer = new IntersectionObserver(
         (entries) => {
@@ -323,7 +331,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 const indexStr = (mostVisibleEntry.target as HTMLElement).dataset.index;
                 if (indexStr) {
                     const index = parseInt(indexStr, 10);
-                    if (currentPostIndex !== index) {
+                    if (currentPostIndexRef.current !== index) {
                          setCurrentPostIndex(index);
                          setIsPlaying(false);
                     }
@@ -332,7 +340,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         },
         { 
             root: feedContainerRef.current,
-            threshold: 0.6, // Fire when 60% of the element is visible
+            threshold: 0.6, 
         }
     );
 
@@ -346,14 +354,12 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             if (ref) observer.unobserve(ref);
         });
     };
-  }, [posts, currentPostIndex]);
+  }, [posts]);
 
 
   useEffect(() => {
     if (posts.length > 0 && !isLoading && isInitialLoad.current) {
         isInitialLoad.current = false;
-        // Do not set active post on load to prevent auto-scrolling.
-        // Let the intersection observer handle it when user scrolls.
     }
   }, [posts, isLoading]);
 
@@ -381,7 +387,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         />
         <div className="w-full border-t border-lime-500/20" />
         <RewardedAdWidget campaign={rewardedCampaign} onAdClick={onRewardedAdClick} />
-        {posts.map((post, index) => (
+        {posts.filter(Boolean).map((post, index) => (
             <div 
                 key={`${post.id}-${index}`} 
                 className="w-full"
@@ -409,6 +415,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                     onAdClick={onAdClick}
                     onStartComment={onStartComment}
                     onSharePost={onSharePost}
+                    onOpenPhotoViewer={onOpenPhotoViewer}
                 />
             </div>
         ))}
