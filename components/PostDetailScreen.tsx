@@ -42,14 +42,17 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
   const newCommentRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const { language } = useSettings();
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
+    isInitialLoad.current = true;
     setIsLoading(true);
     const unsubscribe = firebaseService.listenToPost(postId, (livePost) => {
         if (livePost) {
             setPost(livePost);
-            if (isLoading) { // Only on initial load
+            if (isInitialLoad.current) { 
                 onSetTtsMessage(getTtsPrompt('post_details_loaded', language));
+                isInitialLoad.current = false;
             }
         } else {
             onSetTtsMessage("This post could not be found.");
@@ -65,7 +68,7 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
     });
 
     return () => unsubscribe();
-  }, [postId, onSetTtsMessage, language, newlyAddedCommentId, isLoading]);
+  }, [postId, onSetTtsMessage, language, newlyAddedCommentId]);
 
 
   useEffect(() => {
