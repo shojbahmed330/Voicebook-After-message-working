@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Post, FriendshipStatus, ScrollState, AppView, Comment } from '../types';
 import { PostCard } from './PostCard';
@@ -78,45 +77,57 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const [dragState, setDragState] = useState({ isOverAvatar: false, isOverCover: false });
 
+  // Effect 1: Listen for the user profile document and set the main user state
   useEffect(() => {
-    setIsLoading(true);
-    isInitialLoadRef.current = true;
-    
-    const unsubscribe = firebaseService.listenToUserProfile(username, async (user) => {
-      if (user) {
-        setProfileUser(user);
-        
-        const userPosts = await firebaseService.getPostsByUser(user.id);
-        setPosts(userPosts);
-        
-        if (user.friendIds && user.friendIds.length > 0) {
-            const friends = await firebaseService.getUsersByIds(user.friendIds);
-            setFriendsList(friends);
-        } else {
-            setFriendsList([]);
-        }
+    setIsLoading(true); // Start loading when username changes
+    isInitialLoadRef.current = true; // Reset initial load flag
 
-        if (user.id !== currentUser.id) {
-            const common = await geminiService.getCommonFriends(currentUser.id, user.id);
-            setCommonFriends(common);
-        } else {
-            setCommonFriends([]); 
-        }
-
-        if (isInitialLoadRef.current) {
-          const isOwnProfile = user.id === currentUser.id;
-          onSetTtsMessage(isOwnProfile ? getTtsPrompt('profile_loaded_own', language) : getTtsPrompt('profile_loaded', language, {name: user.name}));
-          isInitialLoadRef.current = false;
-        }
-
-      } else {
+    const unsubscribe = firebaseService.listenToUserProfile(username, (user) => {
+      setProfileUser(user);
+      if (!user) {
         onSetTtsMessage(`Profile for ${username} not found.`);
+        setIsLoading(false); // Stop loading if user not found
       }
-      setIsLoading(false);
     });
-    
+
     return () => unsubscribe();
-  }, [username, currentUser.id, onSetTtsMessage, language]);
+  }, [username, onSetTtsMessage]);
+
+  // Effect 2: Fetch related data (posts, friends) ONLY when the profileUser is set or changes ID
+  useEffect(() => {
+    if (!profileUser) return;
+
+    const fetchRelatedData = async () => {
+      const userPosts = await firebaseService.getPostsByUser(profileUser.id);
+      setPosts(userPosts);
+      
+      if (profileUser.friendIds && profileUser.friendIds.length > 0) {
+          const friends = await firebaseService.getUsersByIds(profileUser.friendIds);
+          setFriendsList(friends);
+      } else {
+          setFriendsList([]);
+      }
+
+      if (profileUser.id !== currentUser.id) {
+          const common = await geminiService.getCommonFriends(currentUser.id, profileUser.id);
+          setCommonFriends(common);
+      } else {
+          setCommonFriends([]);
+      }
+
+      if (isInitialLoadRef.current) {
+        const isOwnProfile = profileUser.id === currentUser.id;
+        onSetTtsMessage(isOwnProfile ? getTtsPrompt('profile_loaded_own', language) : getTtsPrompt('profile_loaded', language, {name: profileUser.name}));
+        isInitialLoadRef.current = false;
+      }
+      
+      setIsLoading(false); // Stop loading after all related data is fetched
+    };
+    
+    fetchRelatedData();
+    
+  }, [profileUser?.id, currentUser.id, language, onSetTtsMessage]);
+
 
   useEffect(() => {
     if (!profileUser || !currentUser || profileUser.id === currentUser.id) {

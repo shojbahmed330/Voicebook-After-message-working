@@ -50,14 +50,17 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
     const unsubscribe = firebaseService.listenToPost(postId, (livePost) => {
         if (livePost) {
             setPost(livePost);
+            // Only call setIsLoading(false) ONCE after the initial data has been loaded.
+            // This prevents re-render loops caused by toggling state on every listener update.
             if (isInitialLoad.current) { 
                 onSetTtsMessage(getTtsPrompt('post_details_loaded', language));
+                setIsLoading(false); // Set loading to false only on the first fire
                 isInitialLoad.current = false;
             }
         } else {
             onSetTtsMessage("This post could not be found.");
+            setIsLoading(false); // Also set loading false if post is not found
         }
-        setIsLoading(false);
 
         // Highlight new comment logic
         if (newlyAddedCommentId) {
