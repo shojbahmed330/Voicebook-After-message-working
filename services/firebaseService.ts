@@ -15,8 +15,8 @@ const Timestamp = firebase.firestore.Timestamp;
 
 // --- Helper Functions ---
 const removeUndefined = (obj: any) => {
+  if (!obj) return {};
   const newObj = {};
-  if (!obj) return newObj;
   for (const key in obj) {
     if (obj[key] !== undefined) {
       newObj[key] = obj[key];
@@ -211,7 +211,16 @@ export const firebaseService = {
         }
     },
     
-    signOutUser: () => auth.signOut(),
+    async signOutUser(userId: string): Promise<void> {
+        if (userId) {
+            try {
+                await this.updateUserOnlineStatus(userId, 'offline');
+            } catch(e) {
+                console.error("Could not set user offline before signing out, but proceeding with sign out.", e);
+            }
+        }
+        await auth.signOut();
+    },
 
     async updateUserOnlineStatus(userId: string, status: 'online' | 'offline'): Promise<void> {
         if (!userId) {

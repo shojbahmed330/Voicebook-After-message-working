@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -228,9 +229,10 @@ const UserApp: React.FC = () => {
   const handleLogout = useCallback(async () => {
     const currentUserForLogout = userRef.current;
     if (currentUserForLogout) {
-        await firebaseService.updateUserOnlineStatus(currentUserForLogout.id, 'offline');
+        await firebaseService.signOutUser(currentUserForLogout.id);
+    } else {
+        await firebaseService.signOutUser(null);
     }
-    firebaseService.signOutUser();
   }, []);
   
   useEffect(() => {
