@@ -229,14 +229,28 @@ export const firebaseService = {
         }
         const userRef = db.collection('users').doc(userId);
         try {
-            const updateData: { onlineStatus: string; lastActiveTimestamp?: any } = { onlineStatus: status };
-            if (status === 'offline') {
-                updateData.lastActiveTimestamp = serverTimestamp();
-            }
+            const updateData: { onlineStatus: string; lastActiveTimestamp: any } = { 
+                onlineStatus: status,
+                lastActiveTimestamp: serverTimestamp(),
+            };
             await userRef.update(updateData);
         } catch (error) {
-            // This can happen if the user logs out and rules prevent writes. It's okay to ignore.
             console.log(`Could not update online status for user ${userId}:`, error.message);
+        }
+    },
+
+    async updateUserActivity(userId: string): Promise<void> {
+        if (!userId) return;
+        const userRef = db.collection('users').doc(userId);
+        try {
+            // We only update the timestamp. If the user is marked as 'offline' by logout,
+            // this periodic update won't wrongly mark them as 'online'.
+            const userDoc = await userRef.get();
+            if (userDoc.exists && userDoc.data()?.onlineStatus === 'online') {
+                await userRef.update({ lastActiveTimestamp: serverTimestamp() });
+            }
+        } catch (error) {
+            console.error("Failed to update user activity timestamp:", error);
         }
     },
 
