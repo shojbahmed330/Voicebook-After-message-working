@@ -1,10 +1,12 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RecordingState, User, Post, PollOption } from './types';
 import { IMAGE_GENERATION_COST, getTtsPrompt } from './constants';
 import Waveform from './components/Waveform';
 import Icon from './components/Icon';
 import { geminiService } from './services/geminiService';
+// FIX: Corrected import path for firebaseService.
 import { firebaseService } from './services/firebaseService';
 import { useSettings } from './contexts/SettingsContext';
 

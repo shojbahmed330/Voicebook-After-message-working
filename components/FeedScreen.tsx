@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Post, User, ScrollState, Campaign, AppView, Story, Comment } from '../types';
 import { PostCard } from './PostCard';
@@ -55,6 +56,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   
   const isInitialLoad = useRef(true);
   const isProgrammaticScroll = useRef(false);
+  const currentPostIndexRef = useRef(currentPostIndex);
+  currentPostIndexRef.current = currentPostIndex;
 
   useEffect(() => {
     setPosts(initialPosts);
@@ -158,7 +161,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             setIsPlaying(true);
             break;
           case 'intent_play_post':
-            if (currentPostIndex === -1 && posts.length > 0) {
+            if (currentPostIndexRef.current === -1 && posts.length > 0) {
                 isProgrammaticScroll.current = true;
                 setCurrentPostIndex(0);
             }
@@ -176,13 +179,13 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 } else {
                     onSetTtsMessage(`I couldn't find a post by ${targetName} to like.`);
                 }
-            } else if (currentPostIndex !== -1 && posts[currentPostIndex] && !posts[currentPostIndex].isSponsored) {
-              onReactToPost(posts[currentPostIndex].id, '👍');
+            } else if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current] && !posts[currentPostIndexRef.current].isSponsored) {
+              onReactToPost(posts[currentPostIndexRef.current].id, '👍');
             }
             break;
           case 'intent_share':
-            if (currentPostIndex !== -1 && posts[currentPostIndex]) {
-                onSharePost(posts[currentPostIndex]);
+            if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current]) {
+                onSharePost(posts[currentPostIndexRef.current]);
             } else {
                 onSetTtsMessage("Please select a post to share by playing it or navigating to it.");
             }
@@ -198,8 +201,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 } else {
                     onSetTtsMessage(`I can't find a post by ${targetName} to view comments on.`);
                 }
-            } else if (currentPostIndex !== -1 && posts[currentPostIndex] && !posts[currentPostIndex].isSponsored) {
-                onViewPost(posts[currentPostIndex].id);
+            } else if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current] && !posts[currentPostIndexRef.current].isSponsored) {
+                onViewPost(posts[currentPostIndexRef.current].id);
             }
             break;
           case 'intent_add_text_to_story':
@@ -213,8 +216,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
           case 'intent_open_profile':
             if (slots?.target_name) {
               onOpenProfile(slots.target_name as string);
-            } else if (currentPostIndex !== -1 && posts[currentPostIndex] && !posts[currentPostIndex].isSponsored) {
-                onOpenProfile(posts[currentPostIndex].author.name);
+            } else if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current] && !posts[currentPostIndexRef.current].isSponsored) {
+                onOpenProfile(posts[currentPostIndexRef.current].author.name);
             }
             break;
           case 'intent_create_post':
@@ -282,7 +285,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         onCommandProcessed();
     }
   }, [
-      posts, currentPostIndex, friends, onOpenProfile, onReactToPost, onViewPost, onSetTtsMessage, onStartCreatePost, 
+      posts, friends, onOpenProfile, onReactToPost, onViewPost, onSetTtsMessage, onStartCreatePost, 
       onNavigate, onSetScrollState, setSearchResults, onCommandProcessed, fetchRewardedCampaign, onSharePost, language
   ]);
 
@@ -330,7 +333,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 const indexStr = (mostVisibleEntry.target as HTMLElement).dataset.index;
                 if (indexStr) {
                     const index = parseInt(indexStr, 10);
-                    if (currentPostIndex !== index) {
+                    if (currentPostIndexRef.current !== index) {
                          setCurrentPostIndex(index);
                          setIsPlaying(false);
                     }
@@ -353,7 +356,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             if (ref) observer.unobserve(ref);
         });
     };
-  }, [posts, currentPostIndex]);
+  }, [posts]);
 
 
   useEffect(() => {

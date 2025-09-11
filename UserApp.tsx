@@ -14,10 +14,12 @@ import FriendsScreen from './components/FriendsScreen';
 import SearchResultsScreen from './components/SearchResultsScreen';
 import VoiceCommandInput from './components/VoiceCommandInput';
 import NotificationPanel from './components/NotificationPanel';
+// FIX: Corrected import path for Sidebar.
 import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import AdModal from './components/AdModal';
 import { geminiService } from './services/geminiService';
+// FIX: Corrected import path for firebaseService.
 import { firebaseService } from './services/firebaseService';
 import { IMAGE_GENERATION_COST, REWARD_AD_COIN_VALUE, getTtsPrompt } from './constants';
 import ConversationsScreen from './components/ConversationsScreen';

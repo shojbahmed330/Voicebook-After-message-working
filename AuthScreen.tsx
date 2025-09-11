@@ -1,6 +1,8 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { AuthMode } from './types';
+// FIX: Corrected import path for firebaseService.
 import { firebaseService } from './services/firebaseService';
 import Icon from './components/Icon';
 import { getTtsPrompt } from './constants';

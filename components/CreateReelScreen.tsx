@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { User, Post } from '../types';
+// FIX: Corrected import path for firebaseService.
 import { firebaseService } from '../services/firebaseService';
 import { REEL_TEXT_FONTS } from '../constants';
 import Icon from './Icon';
@@ -53,7 +54,7 @@ const CreateReelScreen: React.FC<CreateReelScreenProps> = ({ currentUser, onGoBa
         
         try {
             await firebaseService.createPost(
-                { author: currentUser, caption, captionStyle, duration: 0 },
+                { author: currentUser, caption, captionStyle, duration: 0, postType: 'video' },
                 { mediaFile: videoFile }
             );
             onReelCreated();

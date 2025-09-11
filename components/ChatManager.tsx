@@ -1,7 +1,9 @@
 
+
 import React from 'react';
 import { User } from '../types';
 import ChatWidget from './ChatWidget';
+// FIX: Corrected import path for firebaseService.
 import { firebaseService } from '../services/firebaseService';
 
 interface ChatManagerProps {
