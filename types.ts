@@ -27,6 +27,7 @@ export interface User {
   privacySettings: {
     postVisibility: 'public' | 'friends';
     friendRequestPrivacy: 'everyone' | 'friends_of_friends';
+    friendListVisibility?: 'public' | 'friends' | 'only_me';
   };
   notificationSettings?: {
     likes?: boolean;

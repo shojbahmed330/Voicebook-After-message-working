@@ -98,7 +98,8 @@
     "dropToUpdateCover": "কভার ছবি আপডেট করতে এখানে ফেলুন",
     "dropToUpdateAvatar": "ছবি ফেলুন",
     "unfriend": "বন্ধুত্ব বাতিল",
-    "cancelRequest": "অনুরোধ বাতিল করুন"
+    "cancelRequest": "অনুরোধ বাতিল করুন",
+    "friendsListPrivate": "এই ব্যবহারকারীর বন্ধুর তালিকা ব্যক্তিগত।"
   },
   "settings": {
     "title": "সেটিংস",
@@ -115,6 +116,7 @@
     "privacy": "গোপনীয়তা",
     "postVisibility": "কে আপনার ভবিষ্যতের পোস্ট দেখতে পাবে?",
     "friendRequestPrivacy": "কে আপনাকে বন্ধুর অনুরোধ পাঠাতে পারবে?",
+    "friendListVisibility": "কে আপনার বন্ধুর তালিকা দেখতে পাবে?",
     "notifications": "নোটিফিকেশন",
     "likesOnPosts": "আপনার পোস্টে লাইক",
     "commentsOnPosts": "আপনার পোস্টে মন্তব্য",
@@ -146,6 +148,11 @@
     "friendRequestPrivacyOptions": {
       "everyone": "সবাই",
       "friends_of_friends": "বন্ধুদের বন্ধুরা"
+    },
+    "friendListVisibilityOptions": {
+      "public": "সর্বজনীন",
+      "friends": "শুধু বন্ধুরা",
+      "only_me": "শুধু আমি"
     }
   },
   "friends": {

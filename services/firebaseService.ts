@@ -162,7 +162,7 @@ export const firebaseService = {
                     avatarUrl: DEFAULT_AVATARS[Math.floor(Math.random() * DEFAULT_AVATARS.length)],
                     bio: `Welcome to VoiceBook, I'm ${fullName.split(' ')[0]}!`,
                     coverPhotoUrl: DEFAULT_COVER_PHOTOS[Math.floor(Math.random() * DEFAULT_COVER_PHOTOS.length)],
-                    privacySettings: { postVisibility: 'public', friendRequestPrivacy: 'everyone' },
+                    privacySettings: { postVisibility: 'public', friendRequestPrivacy: 'everyone', friendListVisibility: 'friends' },
                     notificationSettings: { likes: true, comments: true, friendRequests: true },
                     blockedUserIds: [],
                     voiceCoins: 100,

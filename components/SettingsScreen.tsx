@@ -79,6 +79,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onUpdateSe
   // Privacy settings state
   const [postVisibility, setPostVisibility] = useState(currentUser.privacySettings.postVisibility);
   const [friendRequestPrivacy, setFriendRequestPrivacy] = useState(currentUser.privacySettings.friendRequestPrivacy);
+  const [friendListVisibility, setFriendListVisibility] = useState(currentUser.privacySettings.friendListVisibility || 'friends');
   const [notificationSettings, setNotificationSettings] = useState(
     currentUser.notificationSettings || { likes: true, comments: true, friendRequests: true, campaignUpdates: true, groupPosts: true }
   );
@@ -145,13 +146,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onUpdateSe
       privacySettings: {
         postVisibility,
         friendRequestPrivacy,
+        friendListVisibility,
       },
       notificationSettings,
     };
     await onUpdateSettings(updatedSettings);
     setIsLoading(false);
     onSetTtsMessage(getTtsPrompt('settings_saved', language));
-  }, [name, bio, work, education, currentCity, hometown, relationshipStatus, postVisibility, friendRequestPrivacy, notificationSettings, onUpdateSettings, onSetTtsMessage, language]);
+  }, [name, bio, work, education, currentCity, hometown, relationshipStatus, postVisibility, friendRequestPrivacy, friendListVisibility, notificationSettings, onUpdateSettings, onSetTtsMessage, language]);
 
   const handleChangePassword = async () => {
     setPasswordError('');
@@ -331,6 +333,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ currentUser, onUpdateSe
           <SettingRowSelect icon={<Icon name="users" className="w-5 h-5"/>} title={t(language, 'settings.friendRequestPrivacy')} value={friendRequestPrivacy} onChange={e => setFriendRequestPrivacy(e.target.value as 'everyone' | 'friends_of_friends')}>
               <option value="everyone">{t(language, 'settings.friendRequestPrivacyOptions.everyone')}</option>
               <option value="friends_of_friends">{t(language, 'settings.friendRequestPrivacyOptions.friends_of_friends')}</option>
+          </SettingRowSelect>
+           <SettingRowSelect icon={<Icon name="users" className="w-5 h-5"/>} title={t(language, 'settings.friendListVisibility')} value={friendListVisibility} onChange={e => setFriendListVisibility(e.target.value as any)}>
+              <option value="public">{t(language, 'settings.friendListVisibilityOptions.public')}</option>
+              <option value="friends">{t(language, 'settings.friendListVisibilityOptions.friends')}</option>
+              <option value="only_me">{t(language, 'settings.friendListVisibilityOptions.only_me')}</option>
           </SettingRowSelect>
         </div>
 

@@ -342,8 +342,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, [currentPostIndex, posts]);
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full"><p className="text-slate-300 text-xl">{t(language, 'common.loading')}</p></div>;
+  }
+
+  if (!profileUser) {
+    return <div className="flex items-center justify-center h-full"><p className="text-slate-300 text-xl">User not found.</p></div>;
+  }
+
+  const isOwnProfile = profileUser.id === currentUser.id;
+
+  const effectiveVisibility = profileUser.privacySettings?.friendListVisibility || 'friends';
+  const canViewFriends =
+    isOwnProfile ||
+    effectiveVisibility === 'public' ||
+    (effectiveVisibility === 'friends' && friendshipStatus === FriendshipStatus.FRIENDS);
+  
   const renderActionButtons = () => {
-    if (!profileUser || currentUser.id === profileUser.id) return null;
     if (isLoadingStatus) {
         return <div className="h-10 w-56 bg-slate-700 animate-pulse rounded-lg" />;
     }
@@ -367,16 +382,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-full"><p className="text-slate-300 text-xl">{t(language, 'common.loading')}</p></div>;
-  }
-
-  if (!profileUser) {
-    return <div className="flex items-center justify-center h-full"><p className="text-slate-300 text-xl">User not found.</p></div>;
-  }
-
-  const isOwnProfile = profileUser.id === currentUser.id;
-  
   const TabButton: React.FC<{tabId: 'posts' | 'about' | 'friends'; label: string; count?: number}> = ({ tabId, label, count }) => (
     <button 
         onClick={() => setActiveTab(tabId)}
@@ -541,15 +546,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     )}
                     {activeTab === 'friends' && (
                         <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {friendsList.length > 0 ? friendsList.map(friend => (
-                                <div key={friend.id} className="bg-slate-800 p-4 rounded-lg flex flex-col items-center text-center">
-                                    <img onClick={() => onOpenProfile(friend.username)} src={friend.avatarUrl} alt={friend.name} className="w-24 h-24 rounded-full cursor-pointer"/>
-                                    <p onClick={() => onOpenProfile(friend.username)} className="font-bold text-slate-100 mt-2 cursor-pointer hover:underline">{friend.name}</p>
+                            {canViewFriends ? (
+                                friendsList.length > 0 ? friendsList.map(friend => (
+                                    <div key={friend.id} className="bg-slate-800 p-4 rounded-lg flex flex-col items-center text-center">
+                                        <img onClick={() => onOpenProfile(friend.username)} src={friend.avatarUrl} alt={friend.name} className="w-24 h-24 rounded-full cursor-pointer"/>
+                                        <p onClick={() => onOpenProfile(friend.username)} className="font-bold text-slate-100 mt-2 cursor-pointer hover:underline">{friend.name}</p>
+                                    </div>
+                                )) : (
+                                    <p className="col-span-full text-center text-slate-400 py-8">
+                                        {profileUser.name} has no friends yet.
+                                    </p>
+                                )
+                            ) : (
+                                <div className="col-span-full text-center py-12 bg-slate-800 rounded-lg">
+                                    <Icon name="lock-closed" className="w-12 h-12 mx-auto text-slate-500 mb-4" />
+                                    <p className="font-semibold text-slate-300">{t(language, 'profile.friendsListPrivate')}</p>
                                 </div>
-                            )) : (
-                                <p className="col-span-full text-center text-slate-400 py-8">
-                                    {profileUser.name} has no friends yet.
-                                </p>
                             )}
                         </div>
                     )}

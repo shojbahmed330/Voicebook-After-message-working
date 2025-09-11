@@ -98,7 +98,8 @@
     "dropToUpdateCover": "Drop to update cover photo",
     "dropToUpdateAvatar": "Drop Image",
     "unfriend": "Unfriend",
-    "cancelRequest": "Cancel Request"
+    "cancelRequest": "Cancel Request",
+    "friendsListPrivate": "This user's friends list is private."
   },
   "settings": {
     "title": "Settings",
@@ -115,6 +116,7 @@
     "privacy": "Privacy",
     "postVisibility": "Who can see your future posts?",
     "friendRequestPrivacy": "Who can send you friend requests?",
+    "friendListVisibility": "Who can see your friends list?",
     "notifications": "Notifications",
     "likesOnPosts": "Likes on your posts",
     "commentsOnPosts": "Comments on your posts",
@@ -146,6 +148,11 @@
     "friendRequestPrivacyOptions": {
       "everyone": "Everyone",
       "friends_of_friends": "Friends of Friends"
+    },
+    "friendListVisibilityOptions": {
+      "public": "Public",
+      "friends": "Friends",
+      "only_me": "Only Me"
     }
   },
   "friends": {
