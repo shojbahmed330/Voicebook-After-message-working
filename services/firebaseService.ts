@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -10,11 +9,22 @@ import { db, auth, storage } from './firebaseConfig';
 import { User, Post, Comment, Message, ReplyInfo, Story, Group, Campaign, LiveAudioRoom, LiveVideoRoom, Report, Notification, Lead, Author, AdminUser, FriendshipStatus, ChatSettings, Conversation } from '../types';
 import { DEFAULT_AVATARS, DEFAULT_COVER_PHOTOS, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, SPONSOR_CPM_BDT } from '../constants';
 
-const { serverTimestamp, increment, arrayUnion, arrayRemove } = firebase.firestore.FieldValue;
+const { serverTimestamp, increment, arrayUnion, arrayRemove, delete: deleteField } = firebase.firestore.FieldValue;
 const Timestamp = firebase.firestore.Timestamp;
 
 
 // --- Helper Functions ---
+const removeUndefined = (obj: any) => {
+  const newObj = {};
+  if (!obj) return newObj;
+  for (const key in obj) {
+    if (obj[key] !== undefined) {
+      newObj[key] = obj[key];
+    }
+  }
+  return newObj;
+};
+
 const docToUser = (doc: firebase.firestore.DocumentSnapshot): User => {
     const data = doc.data();
     const user = {
@@ -162,7 +172,7 @@ export const firebaseService = {
                     lastActiveTimestamp: serverTimestamp(),
                 };
                 
-                await userRef.set(newUserProfile);
+                await userRef.set(removeUndefined(newUserProfile));
                 await usernameRef.set({ userId: user.uid });
                 return true;
             }
@@ -204,6 +214,10 @@ export const firebaseService = {
     signOutUser: () => auth.signOut(),
 
     async updateUserOnlineStatus(userId: string, status: 'online' | 'offline'): Promise<void> {
+        if (!userId) {
+            console.warn("updateUserOnlineStatus called with no userId. Aborting.");
+            return;
+        }
         const userRef = db.collection('users').doc(userId);
         try {
             const updateData: { onlineStatus: string; lastActiveTimestamp?: any } = { onlineStatus: status };
@@ -586,7 +600,7 @@ export const firebaseService = {
             postToSave.audioUrl = url;
         }
 
-        await db.collection('posts').add(postToSave);
+        await db.collection('posts').add(removeUndefined(postToSave));
     },
 
     async deletePost(postId: string, userId: string): Promise<boolean> {
@@ -709,12 +723,12 @@ export const firebaseService = {
         }
         
         await postRef.update({
-            comments: arrayUnion(newComment),
+            comments: arrayUnion(removeUndefined(newComment)),
             commentCount: increment(1),
         });
         
         return {
-            ...newComment,
+            ...removeUndefined(newComment),
             createdAt: new Date().toISOString()
         } as Comment;
     },
@@ -959,16 +973,13 @@ export const firebaseService = {
             createdAt: serverTimestamp(),
         };
         
-        const docRef = await messagesRef.add(messageWithTimestamp);
+        const docRef = await messagesRef.add(removeUndefined(messageWithTimestamp));
 
-        const lastMessageForDoc = {
+        const lastMessageForDoc = removeUndefined({
             ...newMessage,
             id: docRef.id,
             createdAt: new Date().toISOString()
-        };
-        delete lastMessageForDoc.mediaFile;
-        delete lastMessageForDoc.audioBlob;
-
+        });
 
         await chatRef.set({
             participants: [sender.id, recipient.id],
@@ -1001,9 +1012,9 @@ export const firebaseService = {
         if (messageDoc.exists && messageDoc.data()?.senderId === userId) {
             await messageRef.update({
                 isDeleted: true,
-                text: undefined,
-                mediaUrl: undefined,
-                audioUrl: undefined,
+                text: deleteField(),
+                mediaUrl: deleteField(),
+                audioUrl: deleteField(),
                 reactions: {}
             });
             const chatRef = db.collection('chats').doc(chatId);
@@ -1011,9 +1022,9 @@ export const firebaseService = {
             if(chatDoc.exists && chatDoc.data().lastMessage.id === messageId) {
                 await chatRef.update({
                     'lastMessage.isDeleted': true,
-                    'lastMessage.text': undefined,
-                    'lastMessage.mediaUrl': undefined,
-                    'lastMessage.audioUrl': undefined,
+                    'lastMessage.text': deleteField(),
+                    'lastMessage.mediaUrl': deleteField(),
+                    'lastMessage.audioUrl': deleteField(),
                 });
             }
         }
@@ -1068,7 +1079,7 @@ export const firebaseService = {
     },
 
     async updateChatSettings(chatId: string, settings: Partial<ChatSettings>): Promise<void> {
-        await db.collection('chatSettings').doc(chatId).set(settings, { merge: true });
+        await db.collection('chatSettings').doc(chatId).set(removeUndefined(settings), { merge: true });
     },
     // --- Profile & Security ---
     async getUserProfile(username: string): Promise<User | null> {
@@ -1112,7 +1123,7 @@ export const firebaseService = {
         }
     
         try {
-            await userRef.update(updatesToSave);
+            await userRef.update(removeUndefined(updatesToSave));
         } catch (error) {
             console.error("Error updating user profile in Firebase:", error);
             throw error;
@@ -1152,7 +1163,7 @@ export const firebaseService = {
                 duration: 0,
             };
 
-            const postRef = await db.collection('posts').add(newPostData);
+            const postRef = await db.collection('posts').add(removeUndefined(newPostData));
             const newPostDoc = await postRef.get();
             const newPost = docToPost(newPostDoc);
 
@@ -1198,7 +1209,7 @@ export const firebaseService = {
                 duration: 0,
             };
 
-            const postRef = await db.collection('posts').add(newPostData);
+            const postRef = await db.collection('posts').add(removeUndefined(newPostData));
             const newPostDoc = await postRef.get();
             const newPost = docToPost(newPostDoc);
 
@@ -1474,7 +1485,7 @@ async moveToAudienceInAudioRoom(hostId: string, userId: string, roomId: string):
             status: 'pending',
             transactionId,
         };
-        await db.collection('campaigns').add(campaignToSave);
+        await db.collection('campaigns').add(removeUndefined(campaignToSave));
     },
     async getStories(currentUserId: string): Promise<{ author: User; stories: Story[]; allViewed: boolean; }[]> {
         // This is a simplified mock as the full implementation is complex.
@@ -1499,8 +1510,8 @@ async moveToAudienceInAudioRoom(hostId: string, userId: string, roomId: string):
             if (type === 'video') { duration = 15; }
         }
         storyToSave.duration = duration;
-        const docRef = await db.collection('stories').add(storyToSave);
-        return { id: docRef.id, ...storyData, createdAt: new Date().toISOString(), duration, contentUrl: storyToSave.contentUrl, viewedBy: [] };
+        const docRef = await db.collection('stories').add(removeUndefined(storyToSave));
+        return { id: docRef.id, ...removeUndefined(storyData), createdAt: new Date().toISOString(), duration, contentUrl: storyToSave.contentUrl, viewedBy: [] };
     },
     async getGroupById(groupId: string): Promise<Group | null> {
         const doc = await db.collection('groups').doc(groupId).get();
@@ -1536,7 +1547,7 @@ async moveToAudienceInAudioRoom(hostId: string, userId: string, roomId: string):
         return snapshot.docs.map(docToPost);
     },
     async updateGroupSettings(groupId, settings): Promise<boolean> {
-        await db.collection('groups').doc(groupId).update(settings);
+        await db.collection('groups').doc(groupId).update(removeUndefined(settings));
         return true;
     },
     async pinPost(groupId, postId): Promise<boolean> {
