@@ -117,9 +117,13 @@ export const firebaseService = {
   },
   
   // --- USER PROFILE & STATUS ---
-  getUserProfile: (username: string): Promise<User | null> => {
-      // This is a mock function as there's no direct call to it, but it's good practice to have it.
-      return Promise.resolve(null);
+  // @FIX: Implemented missing `getUserProfile` method.
+  getUserProfile: async (username: string): Promise<User | null> => {
+    const snapshot = await db.collection('users').where('username', '==', username.toLowerCase()).limit(1).get();
+    if (snapshot.empty) {
+        return null;
+    }
+    return toUser(snapshot.docs[0]);
   },
   listenToCurrentUser: (userId: string, callback: (user: User | null) => void): (() => void) => {
       return db.collection('users').doc(userId).onSnapshot(doc => {
@@ -160,6 +164,21 @@ export const firebaseService = {
   },
 
   // --- POSTS & FEED ---
+  // @FIX: Implemented missing `getPostsByUser` method.
+  getPostsByUser: async (userId: string): Promise<Post[]> => {
+    const snapshot = await db.collection('posts')
+                            .where('author.id', '==', userId)
+                            .where('status', '==', 'approved')
+                            .orderBy('createdAt', 'desc')
+                            .get();
+    const posts = snapshot.docs.map(toPost);
+    // Hydrate comments for comment count, as it's not stored on the post doc
+    for (let post of posts) {
+        const commentsSnapshot = await db.collection('posts').doc(post.id).collection('comments').get();
+        post.commentCount = commentsSnapshot.size;
+    }
+    return posts;
+  },
   listenToFeedPosts: (userId: string, friendIds: string[], blockedIds: string[], callback: (posts: Post[]) => void): (() => void) => {
       let query = db.collection('posts')
                     .where('status', '==', 'approved')
@@ -214,11 +233,6 @@ export const firebaseService = {
     });
   },
 
-  // --- Omitted many functions for brevity as they follow similar Firebase patterns. ---
-  // A real implementation would have all the functions listed in geminiService.
-  
-  // A few more example implementations:
-  
   createPost: async (postData: Partial<Post>, media: { mediaFile?: File | null, audioBlobUrl?: string | null, generatedImageBase64?: string | null }): Promise<void> => {
       const newPostRef = db.collection('posts').doc();
       const post: any = {
@@ -278,11 +292,60 @@ export const firebaseService = {
   getInjectableAd: (user: User): Promise<Post | null> => Promise.resolve(null),
   getInjectableStoryAd: (user: User): Promise<Story | null> => Promise.resolve(null),
 
+    // @FIX: Implemented `listenToFriendRequests` to resolve missing method error.
+    listenToFriendRequests: (userId: string, callback: (requests: User[]) => void): (() => void) => {
+        const query = db.collection('friend_requests')
+                        .where('to', '==', userId)
+                        .where('status', '==', 'pending');
+        
+        return query.onSnapshot(async snapshot => {
+            if (snapshot.empty) {
+                callback([]);
+                return;
+            }
+            const requestingUserIds = snapshot.docs.map(doc => doc.data().from);
+            if (requestingUserIds.length > 0) {
+                const uniqueIds = [...new Set(requestingUserIds)];
+                const users = await firebaseService.getUsersByIds(uniqueIds);
+                callback(users);
+            } else {
+                callback([]);
+            }
+        });
+    },
+
+    // @FIX: Implemented `checkFriendshipStatus` to resolve missing method error.
+    checkFriendshipStatus: async (currentUserId: string, profileUserId: string): Promise<FriendshipStatus> => {
+        const userDoc = await db.collection('users').doc(currentUserId).get();
+        if (userDoc.data()?.friendIds?.includes(profileUserId)) {
+            return FriendshipStatus.FRIENDS;
+        }
+        const sentRequest = await db.collection('friend_requests').where('from', '==', currentUserId).where('to', '==', profileUserId).where('status', '==', 'pending').limit(1).get();
+        if (!sentRequest.empty) {
+            return FriendshipStatus.REQUEST_SENT;
+        }
+        const receivedRequest = await db.collection('friend_requests').where('from', '==', profileUserId).where('to', '==', currentUserId).where('status', '==', 'pending').limit(1).get();
+        if (!receivedRequest.empty) {
+            return FriendshipStatus.PENDING_APPROVAL;
+        }
+        return FriendshipStatus.NOT_FRIENDS;
+    },
+
+    // @FIX: Implemented `listenToFriendshipStatus` to resolve missing method error.
+    listenToFriendshipStatus: (currentUserId: string, profileUserId: string, callback: (status: FriendshipStatus) => void): (() => void) => {
+        const combinedUnsubscribe: (() => void)[] = [];
+        const recheckStatus = () => firebaseService.checkFriendshipStatus(currentUserId, profileUserId).then(callback);
+        recheckStatus();
+        combinedUnsubscribe.push(db.collection('users').doc(currentUserId).onSnapshot(recheckStatus));
+        combinedUnsubscribe.push(db.collection('friend_requests').where('from', '==', currentUserId).where('to', '==', profileUserId).onSnapshot(recheckStatus));
+        combinedUnsubscribe.push(db.collection('friend_requests').where('from', '==', profileUserId).where('to', '==', currentUserId).onSnapshot(recheckStatus));
+        return () => combinedUnsubscribe.forEach(unsub => unsub());
+    },
+
   // Dummy implementations for the rest to avoid compilation errors
   getFriendRequests: async (userId: string): Promise<User[]> => { return []; },
   acceptFriendRequest: async (currentUserId: string, requestingUserId: string) => {},
   declineFriendRequest: async (currentUserId: string, requestingUserId: string) => {},
-  checkFriendshipStatus: async (currentUserId: string, profileUserId: string): Promise<FriendshipStatus> => { return FriendshipStatus.NOT_FRIENDS; },
   addFriend: async (currentUserId: string, targetUserId: string): Promise<{ success: boolean; reason?: string }> => { return { success: true }; },
   unfriendUser: async (currentUserId: string, targetUserId: string) => {},
   cancelFriendRequest: async (currentUserId: string, targetUserId: string) => {},

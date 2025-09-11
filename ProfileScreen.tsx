@@ -244,7 +244,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({
           case 'intent_view_comments':
             handleComment();
             break;
-// FIX: The call to `addFriend` was missing the current user's ID and the state update was incorrect.
+// @FIX: The call to `addFriend` was missing the current user's ID and the state update was incorrect.
 // Both issues have been resolved to align with the behavior of the "Add Friend" button.
           case 'intent_add_friend':
             if (profileUser.id !== currentUser.id) {

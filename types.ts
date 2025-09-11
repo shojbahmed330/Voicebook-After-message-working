@@ -1,5 +1,4 @@
 
-
 export interface Author {
     id: string;
     name: string;
@@ -11,7 +10,7 @@ export interface User extends Author {
     email: string;
     password?: string; // Should not be sent to client
     bio: string;
-    coverPhotoUrl: string; // FIX: Added missing property
+    coverPhotoUrl: string;
     work?: string;
     education?: string;
     currentCity?: string;
@@ -41,6 +40,17 @@ export interface User extends Author {
     friendshipStatus?: FriendshipStatus; // For friend suggestions
 }
 
+export interface PollOption {
+    text: string;
+    votes: number;
+    votedBy: string[]; // array of user IDs
+}
+
+export interface Poll {
+    question: string;
+    options: PollOption[];
+}
+
 export interface Post {
     id: string;
     author: Author;
@@ -68,7 +78,7 @@ export interface Post {
     sponsorId?: string;
     sponsorAvatar?: string;
     // Special post types
-    postType?: 'audio' | 'image' | 'video' | 'text' | 'profile_picture_change' | 'cover_photo_change' | 'announcement' | 'question';
+    postType?: 'audio' | 'image' | 'video' | 'text' | 'profile_picture_change' | 'cover_photo_change' | 'announcement' | 'question' | 'poll';
     newPhotoUrl?: string; // For profile/cover photo change posts
     imagePrompt?: string; // For AI generated images
     // Group related
@@ -77,6 +87,12 @@ export interface Post {
     status?: 'pending' | 'approved';
     poll?: Poll;
     bestAnswerId?: string;
+}
+
+export interface ReplyInfo {
+  messageId: string;
+  senderName: string;
+  content: string;
 }
 
 export interface Comment {
@@ -201,6 +217,16 @@ export interface Campaign {
     }
 }
 
+export interface Lead {
+    id: string;
+    campaignId: string;
+    sponsorId: string;
+    userName: string;
+    userEmail: string;
+    userPhone?: string;
+    createdAt: string;
+}
+
 export interface NLUResponse {
     intent: string;
     slots?: { [key: string]: string | number };
@@ -254,6 +280,14 @@ export interface VideoParticipantState extends User {
     isCameraOff: boolean;
 }
 
+export interface JoinRequest {
+    user: User;
+    answers?: string[];
+    requestedAt: string;
+}
+
+export type GroupCategory = 'General' | 'Food' | 'Gaming' | 'Music' | 'Technology' | 'Travel' | 'Art & Culture' | 'Sports';
+
 export interface Group {
     id: string;
     name: string;
@@ -291,15 +325,6 @@ export interface GroupChat {
     messages: (Message & { sender: User })[];
 }
 
-export interface JoinRequest {
-    user: User;
-    answers?: string[];
-    requestedAt: string;
-}
-
-export type GroupCategory = 'General' | 'Food' | 'Gaming' | 'Music' | 'Technology' | 'Travel' | 'Art & Culture' | 'Sports';
-
-// FIX: Added missing type definition for GroupRole.
 export type GroupRole = 'Admin' | 'Moderator' | 'Top Contributor';
 
 export interface MusicTrack {
@@ -308,6 +333,16 @@ export interface MusicTrack {
     artist: string;
     language: 'bangla' | 'hindi';
     url: string;
+}
+
+export type StoryPrivacy = 'public' | 'friends';
+
+export interface StoryTextStyle {
+    name: string;
+    backgroundColor: string;
+    fontFamily: string;
+    color: string;
+    textAlign: 'left' | 'center' | 'right' | 'justify';
 }
 
 export interface Story {
@@ -328,8 +363,35 @@ export interface Story {
     ctaLink?: string;
 }
 
-export interface StoryTextStyle {
-    name: string;
-    backgroundColor: string;
-    fontFamily: string;
-    color:
+export interface AdminUser {
+    id: string;
+    email: string;
+}
+
+export interface CategorizedExploreFeed {
+    trending: Post[];
+    forYou: Post[];
+    questions: Post[];
+    funnyVoiceNotes: Post[];
+    newTalent: Post[];
+}
+
+export interface Report {
+    id: string;
+    reportedContentId: string;
+    reportedContentType: 'post' | 'comment' | 'user';
+    reportedUserId: string; // The user who created the content
+    reporterId: string;
+    reporterName: string;
+    reason: string;
+    createdAt: string;
+    status: 'pending' | 'resolved';
+    resolution?: string;
+}
+
+// NOTE: This type was missing from the provided files.
+// It is required for the 'post' interface.
+export interface AdminUser {
+    id: string;
+    email: string;
+}
