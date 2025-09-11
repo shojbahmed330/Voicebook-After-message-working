@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Notification } from '../types';
 import Icon from './Icon';

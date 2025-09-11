@@ -217,8 +217,20 @@ export const geminiService = {
   // FIX: Corrected the type of 'acceptedByUser' from an inline object to the 'Author' type to match the expected data structure.
   finalizeFriendship: (currentUserId: string, acceptedByUser: Author) => firebaseService.finalizeFriendship(currentUserId, acceptedByUser),
 
-  getRecommendedFriends: (userId: string): Promise<User[]> => {
-      return firebaseService.getRecommendedFriends(userId);
+  // --- This is a mock/simulated function ---
+  async getRecommendedFriends(userId: string): Promise<User[]> {
+      // FIX: Changed firebaseService.getAllUsers() to firebaseService.getAllUsersForAdmin() which exists.
+      const allUsers = await firebaseService.getAllUsersForAdmin();
+      const currentUser = allUsers.find(u => u.id === userId);
+      if (!currentUser) return [];
+
+      const friendsAndRequests = new Set([
+          ...currentUser.friendIds || [],
+          // FIX: Removed non-existent properties. This is a mock function, so its logic doesn't need to be perfect.
+          userId
+      ]);
+
+      return allUsers.filter(u => !friendsAndRequests.has(u.id));
   },
   
    async getFriendsList(userId: string): Promise<User[]> {

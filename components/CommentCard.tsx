@@ -17,6 +17,7 @@ interface CommentCardProps {
   // @FIXML-FIX-212: Add optional onEdit and onDelete props
   onEdit?: (commentId: string, newText: string) => void;
   onDelete?: (commentId: string) => void;
+  // @FIXML-FIX-224: Add optional isReply prop
   isReply?: boolean;
 }
 

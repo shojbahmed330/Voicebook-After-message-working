@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { User, AppView, VoiceState } from '../types';
 import Icon from './Icon';
@@ -14,12 +15,11 @@ interface SidebarProps {
 
 const NavItem: React.FC<{
     iconName: React.ComponentProps<typeof Icon>['name'];
-    solidIconName?: React.ComponentProps<typeof Icon>['name'];
     label: string;
     isActive: boolean;
     badgeCount?: number;
     onClick: () => void;
-}> = ({ iconName, solidIconName, label, isActive, badgeCount = 0, onClick }) => {
+}> = ({ iconName, label, isActive, badgeCount = 0, onClick }) => {
     return (
         <li>
             <button
@@ -27,13 +27,13 @@ const NavItem: React.FC<{
                 className={`w-full flex items-center gap-4 p-3 rounded-lg text-lg transition-colors ${
                     isActive
                         ? 'bg-lime-500/10 text-lime-300 font-bold'
-                        : 'text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'
+                        : 'text-lime-400/80 hover:bg-slate-800 hover:text-lime-300'
                 }`}
             >
-                <Icon name={isActive && solidIconName ? solidIconName : iconName} className="w-7 h-7" />
+                <Icon name={iconName} className="w-7 h-7" />
                 <span>{label}</span>
                 {badgeCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                    <span className="ml-auto bg-lime-500 text-black text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
                         {badgeCount}
                     </span>
                 )}
@@ -44,14 +44,14 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendRequestCount, activeView, voiceCoins, voiceState, onMicClick }) => {
   const getFabClass = () => {
-    let base = "w-full text-white font-bold text-lg py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2";
+    let base = "w-full text-black font-bold text-lg py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2";
     switch (voiceState) {
         case VoiceState.LISTENING:
-            return `${base} bg-red-500 ring-4 ring-red-500/50 animate-pulse`;
+            return `${base} bg-red-500 ring-4 ring-red-500/50 animate-pulse text-white`;
         case VoiceState.PROCESSING:
-            return `${base} bg-yellow-600 cursor-not-allowed`;
+            return `${base} bg-yellow-600 cursor-not-allowed text-black`;
         default: // IDLE
-            return `${base} bg-lime-600 hover:bg-lime-500 text-black`;
+            return `${base} bg-lime-600 hover:bg-lime-500`;
     }
   };
 
@@ -77,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendReques
   };
 
   return (
-    <aside className="w-72 bg-slate-900/50 backdrop-blur-sm border-r border-lime-500/20 p-4 flex-col flex-shrink-0 hidden md:flex">
+    <aside className="w-72 flex-shrink-0 hidden md:flex flex-col py-6">
       <div className="flex-grow">
         {/* Profile Section */}
         <button
@@ -86,8 +86,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendReques
         >
           <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-12 h-12 rounded-full" />
           <div>
-            <p className="font-bold text-slate-100 text-lg">{currentUser.name}</p>
-            <p className="text-sm text-slate-400">View Profile</p>
+            <p className="font-bold text-lime-200 text-lg">{currentUser.name}</p>
+            <p className="text-sm text-lime-500">View Profile</p>
           </div>
         </button>
 
@@ -96,7 +96,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendReques
           <ul className="space-y-2">
             <NavItem
                 iconName="home"
-                solidIconName='home-solid'
                 label="Home"
                 isActive={activeView === AppView.FEED}
                 onClick={() => onNavigate('feed')}
@@ -115,7 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendReques
             />
             <NavItem
                 iconName="users"
-                solidIconName='users-group-solid'
                 label="Friends"
                 isActive={activeView === AppView.FRIENDS}
                 badgeCount={friendRequestCount}
@@ -130,13 +128,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendReques
             <NavItem
                 iconName="message"
                 label="Messages"
+                // FIX: Property 'MESSAGES' does not exist on type 'typeof AppView'. Corrected to CONVERSATIONS.
                 isActive={activeView === AppView.CONVERSATIONS}
                 onClick={() => onNavigate('messages')}
             />
             <NavItem
                 iconName="chat-bubble-group"
                 label="Rooms"
-                isActive={activeView === AppView.ROOMS_LIST || activeView === AppView.LIVE_ROOM || activeView === AppView.VIDEO_ROOMS_LIST || activeView === AppView.LIVE_VIDEO_ROOM || activeView === AppView.ROOMS_HUB}
+                isActive={activeView === AppView.ROOMS_LIST || activeView === AppView.LIVE_ROOM || activeView === AppView.ROOMS_HUB}
                 onClick={() => onNavigate('rooms')}
             />
              <NavItem
@@ -156,16 +155,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onNavigate, friendReques
       </div>
 
       {/* Voice Coins */}
-      <div className="mb-4 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-between p-3">
+      <div className="mb-4 bg-slate-900 shadow-md rounded-lg flex items-center justify-between p-3 border border-lime-500/20">
           <div className="flex items-center gap-3">
-              <Icon name="coin" className="w-8 h-8 text-yellow-500" />
+              <Icon name="coin" className="w-8 h-8 text-yellow-400" />
               <div>
-                  <p className="font-semibold text-slate-100">Voice Coins</p>
-                  <p className="text-xs text-slate-400">For AI features</p>
+                  <p className="font-semibold text-lime-300">Voice Coins</p>
+                  <p className="text-xs text-lime-500">For AI features</p>
               </div>
           </div>
-          <p className="text-2xl font-bold text-yellow-500">{voiceCoins}</p>
+          <p className="text-2xl font-bold text-yellow-400">{voiceCoins}</p>
       </div>
+
 
       {/* Voice Command Button */}
       <div className="flex-shrink-0">

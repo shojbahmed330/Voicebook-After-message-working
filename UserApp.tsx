@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AppView, User, VoiceState, Post, Comment, ScrollState, Notification, Campaign, Group, Story } from './types';
 import AuthScreen from './components/AuthScreen';
@@ -14,12 +16,10 @@ import FriendsScreen from './components/FriendsScreen';
 import SearchResultsScreen from './components/SearchResultsScreen';
 import VoiceCommandInput from './components/VoiceCommandInput';
 import NotificationPanel from './components/NotificationPanel';
-// FIX: Corrected import path for Sidebar.
 import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import AdModal from './components/AdModal';
 import { geminiService } from './services/geminiService';
-// FIX: Corrected import path for firebaseService.
 import { firebaseService } from './services/firebaseService';
 import { IMAGE_GENERATION_COST, REWARD_AD_COIN_VALUE, getTtsPrompt } from './constants';
 import ConversationsScreen from './components/ConversationsScreen';
@@ -234,6 +234,19 @@ const UserApp: React.FC = () => {
         await firebaseService.signOutUser(null);
     }
   }, []);
+  
+  useEffect(() => {
+      const handleBeforeUnload = () => {
+          const currentUserForUnload = userRef.current;
+          if (currentUserForUnload) {
+              firebaseService.updateUserOnlineStatus(currentUserForUnload.id, 'offline');
+          }
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+  }, []);
 
   // Effect 1: Handles authentication state changes. Only sets the current user ID or handles logout.
   useEffect(() => {
@@ -316,15 +329,6 @@ const UserApp: React.FC = () => {
         }
     });
     unsubscribes.push(unsubscribeAcceptedRequests);
-
-    // Periodically update user activity to keep them "online" via timestamp
-    const updateUserActivity = () => {
-        if (document.visibilityState === 'visible' && user?.id) { // Only update if tab is active
-            firebaseService.updateUserActivity(user.id);
-        }
-    };
-    const activityInterval = setInterval(updateUserActivity, 60000); // every 1 minute
-    unsubscribes.push(() => clearInterval(activityInterval));
 
     return () => {
         unsubscribes.forEach(unsub => unsub());

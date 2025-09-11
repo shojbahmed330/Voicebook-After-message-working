@@ -1,88 +1,95 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { AppView, VoiceState } from '../types';
 import Icon from './Icon';
 import VoiceCommandInput from './VoiceCommandInput';
 
 interface MobileBottomNavProps {
-  onNavigate: (viewName: 'feed' | 'reels' | 'friends' | 'messages' | 'menu') => void;
-  friendRequestCount: number;
-  activeView: AppView;
-  voiceState: VoiceState;
-  onMicClick: () => void;
-  onSendCommand: (command: string) => void;
-  commandInputValue: string;
-  setCommandInputValue: (value: string) => void;
-  ttsMessage: string;
+    onNavigate: (viewName: 'feed' | 'explore' | 'reels' | 'friends' | 'profile' | 'messages' | 'rooms' | 'groups' | 'menu') => void;
+    friendRequestCount: number;
+    activeView: AppView;
+    voiceState: VoiceState;
+    onMicClick: () => void;
+    onSendCommand: (command: string) => void;
+    commandInputValue: string;
+    setCommandInputValue: (value: string) => void;
+    ttsMessage: string;
 }
 
-const NavButton: React.FC<{
+const NavItem: React.FC<{
     iconName: React.ComponentProps<typeof Icon>['name'];
-    solidIconName?: React.ComponentProps<typeof Icon>['name'];
     label: string;
     isActive: boolean;
-    onClick: () => void;
     badgeCount?: number;
-}> = ({ iconName, solidIconName, label, isActive, onClick, badgeCount = 0 }) => (
-    <button onClick={onClick} className="flex-1 flex flex-col items-center gap-1 text-xs transition-colors relative">
-        <div className={`w-8 h-8 flex items-center justify-center ${isActive ? 'text-lime-400' : 'text-slate-400'}`}>
-            <Icon name={isActive && solidIconName ? solidIconName : iconName} className="w-7 h-7" />
-        </div>
-        <span className={`${isActive ? 'text-lime-400 font-semibold' : 'text-slate-400'}`}>{label}</span>
-        {badgeCount > 0 && (
-            <span className="absolute top-0 right-1/2 translate-x-3 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {badgeCount}
-            </span>
-        )}
-    </button>
-);
-
-
-const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
-  onNavigate,
-  friendRequestCount,
-  activeView,
-  voiceState,
-  onMicClick,
-  onSendCommand,
-  commandInputValue,
-  setCommandInputValue,
-  ttsMessage
-}) => {
-  const [isVoiceInputOpen, setVoiceInputOpen] = useState(false);
-  
-  if (isVoiceInputOpen) {
-      return (
-          <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
-              <VoiceCommandInput
-                  onSendCommand={(cmd) => { onSendCommand(cmd); setVoiceInputOpen(false); }}
-                  voiceState={voiceState}
-                  onMicClick={onMicClick}
-                  value={commandInputValue}
-                  onValueChange={setCommandInputValue}
-                  placeholder={ttsMessage}
-              />
-          </div>
-      );
-  }
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-900 border-t border-lime-500/20 flex items-center justify-around h-20 px-2">
-        <NavButton iconName="home" solidIconName="home-solid" label="Home" isActive={activeView === AppView.FEED} onClick={() => onNavigate('feed')} />
-        <NavButton iconName="film" label="Reels" isActive={activeView === AppView.REELS} onClick={() => onNavigate('reels')} />
-        
-        <button 
-            onClick={() => setVoiceInputOpen(true)} 
-            className="w-16 h-16 -mt-8 bg-lime-500 rounded-full flex items-center justify-center text-black shadow-lg shadow-lime-500/20"
-            aria-label="Open Voice Command"
+    onClick: () => void;
+}> = ({ iconName, label, isActive, badgeCount = 0, onClick }) => {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${
+                isActive ? 'text-lime-400' : 'text-slate-400 hover:text-lime-300'
+            }`}
         >
-            <Icon name="mic" className="w-8 h-8" />
+            <div className="relative">
+                <Icon name={iconName} className="w-7 h-7" />
+                {badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-lime-500 text-xs font-bold text-black border border-slate-900">{badgeCount}</span>
+                )}
+            </div>
+            <span className="text-xs">{label}</span>
         </button>
+    );
+};
 
-        <NavButton iconName="users" solidIconName="users-group-solid" label="Friends" isActive={activeView === AppView.FRIENDS} onClick={() => onNavigate('friends')} badgeCount={friendRequestCount} />
-        <NavButton iconName="ellipsis-vertical" label="Menu" isActive={activeView === AppView.MOBILE_MENU} onClick={() => onNavigate('menu')} />
-    </div>
-  );
+
+const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onNavigate, friendRequestCount, activeView, voiceState, onMicClick, onSendCommand, commandInputValue, setCommandInputValue, ttsMessage }) => {
+    return (
+        <div className="fixed bottom-0 left-0 right-0 h-auto bg-gradient-to-t from-black to-slate-900 border-t border-lime-500/20 z-40 md:hidden flex flex-col">
+            {/* The new, persistent command input bar for mobile */}
+            <VoiceCommandInput
+                onSendCommand={onSendCommand}
+                voiceState={voiceState}
+                onMicClick={onMicClick}
+                value={commandInputValue}
+                onValueChange={setCommandInputValue}
+                placeholder={ttsMessage}
+            />
+            {/* The 5-button navigation bar */}
+            <div className="flex justify-around items-center h-16">
+                <NavItem
+                    iconName="home-solid"
+                    label="Home"
+                    isActive={activeView === AppView.FEED}
+                    onClick={() => onNavigate('feed')}
+                />
+                 <NavItem
+                    iconName="compass"
+                    label="Explore"
+                    isActive={activeView === AppView.EXPLORE}
+                    onClick={() => onNavigate('explore')}
+                />
+                <NavItem
+                    iconName="film"
+                    label="Reels"
+                    isActive={activeView === AppView.REELS}
+                    onClick={() => onNavigate('reels')}
+                />
+                 <NavItem
+                    iconName="message"
+                    label="Messages"
+                    // FIX: Property 'MESSAGES' does not exist on type 'typeof AppView'.
+                    isActive={activeView === AppView.CONVERSATIONS}
+                    onClick={() => onNavigate('messages')}
+                />
+                <NavItem
+                    iconName="ellipsis-vertical"
+                    label="Menu"
+                    isActive={activeView === AppView.MOBILE_MENU}
+                    onClick={() => onNavigate('menu')}
+                />
+            </div>
+        </div>
+    );
 };
 
 export default MobileBottomNav;

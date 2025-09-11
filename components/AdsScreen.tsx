@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User, Campaign, Lead } from '../types';
-// FIX: Corrected import path for firebaseService.
 import { firebaseService } from '../services/firebaseService';
 import { geminiService } from '../services/geminiService';
 import Icon from './Icon';
@@ -505,7 +504,7 @@ const AdsScreen: React.FC<AdsScreenProps> = ({ currentUser, onSetTtsMessage, las
                 />
             )}
         </div>
-    )
+    );
 };
 
 export default AdsScreen;

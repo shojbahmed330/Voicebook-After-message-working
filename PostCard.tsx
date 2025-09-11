@@ -1,7 +1,6 @@
 
-
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-// FIX: Update import paths to be relative to the root directory
+// @FIX: Update import paths to be relative to the root directory
 import type { Post, User, Comment, GroupRole } from './types';
 import Icon from './components/Icon';
 import Waveform from './components/Waveform';
@@ -19,7 +18,7 @@ interface PostCardProps {
   onReact: (postId: string, emoji: string) => void;
   onViewPost: (postId: string) => void;
   onAuthorClick: (username: string) => void;
-  // FIX: Add missing props to the interface
+  // @FIX: Add missing props to the interface
   onStartComment: (postId: string, commentToReplyTo?: Comment) => void;
   onSharePost?: (post: Post) => void;
   onAdClick?: (post: Post) => void;

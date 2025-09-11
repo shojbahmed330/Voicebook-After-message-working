@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { User } from '../types';
 
 interface ContactsPanelProps {
@@ -23,29 +23,11 @@ const formatTimeAgo = (isoString?: string): string => {
     return `${days}d ago`;
 };
 
-const isUserOnline = (user: User): boolean => {
-    if (user.onlineStatus === 'offline') return false;
-    if (!user.lastActiveTimestamp) return false; // Default to offline if no timestamp
-    
-    // A user is online if their status is 'online' and they were active in the last 3 minutes.
-    const threeMinutesInMs = 3 * 60 * 1000;
-    const lastActiveTime = new Date(user.lastActiveTimestamp).getTime();
-    const now = Date.now();
-    
-    return (now - lastActiveTime) < threeMinutesInMs;
-};
-
 
 const ContactsPanel: React.FC<ContactsPanelProps> = ({ friends, onOpenConversation }) => {
-  const sortedFriends = useMemo(() => {
-    return [...friends].sort((a, b) => {
-        const aOnline = isUserOnline(a);
-        const bOnline = isUserOnline(b);
-        if (aOnline && !bOnline) return -1;
-        if (!aOnline && bOnline) return 1;
-        return a.name.localeCompare(b.name);
-    });
-  }, [friends]);
+  const onlineFriends = friends.filter(f => f.onlineStatus === 'online');
+  const offlineFriends = friends.filter(f => f.onlineStatus !== 'online');
+  const sortedFriends = [...onlineFriends, ...offlineFriends];
 
   return (
     <aside className="w-72 flex-shrink-0 hidden lg:block py-6">
@@ -66,12 +48,12 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({ friends, onOpenConversati
                       <img src={friend.avatarUrl} alt={friend.name} className="w-9 h-9 rounded-full" />
                       <div 
                         className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${
-                          isUserOnline(friend) ? 'bg-green-500' : 'bg-gray-500'
+                          friend.onlineStatus === 'online' ? 'bg-green-500' : 'bg-gray-500'
                         }`}
                       />
                     </div>
                     <span className="text-lime-300 truncate flex-grow">{friend.name}</span>
-                    {!isUserOnline(friend) && friend.lastActiveTimestamp && (
+                    {friend.onlineStatus !== 'online' && friend.lastActiveTimestamp && (
                         <span className="text-xs text-slate-500 flex-shrink-0">
                             {formatTimeAgo(friend.lastActiveTimestamp)}
                         </span>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Post, User, Comment, ScrollState } from '../types';
 import { PostCard } from './PostCard';
@@ -204,6 +203,7 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
           onAuthorClick={onOpenProfile}
           onSharePost={onSharePost}
           onOpenPhotoViewer={onOpenPhotoViewer}
+// @FIXML-FIX-185: Pass onStartComment prop to PostCard
           onStartComment={onStartComment}
         />
 
@@ -221,6 +221,7 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
                                 onAuthorClick={onOpenProfile}
                                 onReply={setReplyingTo}
                                 onReact={(commentId, emoji) => onReactToComment(post.id, commentId, emoji)}
+// @FIXML-FIX-212: Pass onEdit and onDelete to CommentCard
                                 onEdit={(commentId, newText) => onEditComment(post.id, commentId, newText)}
                                 onDelete={(commentId) => onDeleteComment(post.id, commentId)}
                             />
@@ -233,6 +234,7 @@ const PostDetailScreen: React.FC<PostDetailScreenProps> = ({ postId, newlyAddedC
                                             comment={reply}
                                             currentUser={currentUser}
                                             isPlaying={playingCommentId === reply.id}
+// @FIXML-FIX-224: Pass isReply to CommentCard
                                             isReply={true}
                                             onPlayPause={() => handlePlayComment(reply)}
                                             onAuthorClick={onOpenProfile}

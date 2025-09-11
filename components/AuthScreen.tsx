@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AuthMode } from '../types';
 import { firebaseService } from '../services/firebaseService';

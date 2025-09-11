@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User } from '../types';
-// FIX: Corrected import path for firebaseService.
 import { firebaseService } from '../services/firebaseService';
 import Icon from './Icon';
 

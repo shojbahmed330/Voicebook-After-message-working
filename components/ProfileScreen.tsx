@@ -61,10 +61,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isFriendMenuOpen, setIsFriendMenuOpen] = useState(false);
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const friendMenuRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -138,14 +135,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         return;
     }
 
-    // This listener provides real-time updates on friendship status
-    const unsubscribe = firebaseService.listenToFriendshipStatus(currentUser.id, profileUser.id, (status) => {
-        setFriendshipStatus(status);
-        setIsLoadingStatus(false);
-    });
+    const checkStatus = async () => {
+        setIsLoadingStatus(true);
+        try {
+            const status = await firebaseService.checkFriendshipStatus(currentUser.id, profileUser.id);
+            setFriendshipStatus(status);
+        } catch (error) {
+            console.error("Failed to check friendship status:", error);
+            setFriendshipStatus(FriendshipStatus.NOT_FRIENDS);
+        } finally {
+            setIsLoadingStatus(false);
+        }
+    };
 
-    return () => unsubscribe();
-  }, [profileUser?.id, currentUser.id]);
+    checkStatus();
+  }, [profileUser, currentUser]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -169,16 +173,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         cancelAnimationFrame(animationFrameId);
     };
   }, [scrollState]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (friendMenuRef.current && !friendMenuRef.current.contains(event.target as Node)) {
-        setIsFriendMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
   
   const handleComment = () => {
      if (posts.length > 0) {
@@ -270,10 +264,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setIsLoadingStatus(true);
     const result = await geminiService.addFriend(currentUser.id, profileUser.id);
     if (result.success) {
-        // Status will update via listener
+        setFriendshipStatus(FriendshipStatus.REQUEST_SENT);
         onSetTtsMessage(getTtsPrompt('friend_request_sent', language, { name: profileUser.name }));
-    } else {
+    } else if (result.reason === 'friends_of_friends') {
         onSetTtsMessage(getTtsPrompt('friend_request_privacy_block', language, { name: profileUser.name }));
+    } else {
+        onSetTtsMessage("Failed to send friend request. Please try again later.");
     }
     setIsLoadingStatus(false);
   }, [profileUser, currentUser.id, onSetTtsMessage, language, isLoadingStatus]);
@@ -283,37 +279,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       setIsLoadingStatus(true);
       if (response === 'accept') {
           await geminiService.acceptFriendRequest(currentUser.id, profileUser.id);
+          setFriendshipStatus(FriendshipStatus.FRIENDS);
           onSetTtsMessage(getTtsPrompt('friend_request_accepted', language, { name: profileUser.name }));
       } else {
           await geminiService.declineFriendRequest(currentUser.id, profileUser.id);
+          setFriendshipStatus(FriendshipStatus.NOT_FRIENDS);
           onSetTtsMessage(getTtsPrompt('friend_request_declined', language, { name: profileUser.name }));
       }
-      // Status will update via listener, no need to manually set it
       setIsLoadingStatus(false);
   }, [profileUser, currentUser.id, onSetTtsMessage, language, isLoadingStatus]);
-
-  const handleUnfriend = useCallback(async () => {
-    if (!profileUser) return;
-    if (window.confirm(`Are you sure you want to remove ${profileUser.name} from your friends?`)) {
-        setIsLoadingStatus(true);
-        setIsFriendMenuOpen(false);
-        await geminiService.unfriendUser(currentUser.id, profileUser.id);
-        onSetTtsMessage(getTtsPrompt('friend_removed', language, { name: profileUser.name }));
-        // Status updates via listener
-        setIsLoadingStatus(false);
-    }
-  }, [profileUser, currentUser.id, onSetTtsMessage, language]);
-
-  const handleCancelRequest = useCallback(async () => {
-    if (!profileUser) return;
-    setIsLoadingStatus(true);
-    setIsFriendMenuOpen(false);
-    await geminiService.cancelFriendRequest(currentUser.id, profileUser.id);
-    onSetTtsMessage(getTtsPrompt('request_cancelled', language, { name: profileUser.name }));
-    // Status updates via listener
-    setIsLoadingStatus(false);
-  }, [profileUser, currentUser.id, onSetTtsMessage, language]);
-
 
   const handleCommand = useCallback(async (command: string) => {
     if (!profileUser) {
@@ -324,28 +298,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     try {
         const context = { userNames: [profileUser.name] };
         const intentResponse = await geminiService.processIntent(command, context);
-        const { intent } = intentResponse;
         
-        switch (intent) {
+        switch (intentResponse.intent) {
           case 'intent_add_friend':
-            if (friendshipStatus === FriendshipStatus.NOT_FRIENDS) handleAddFriendAction();
+            if (profileUser.id !== currentUser.id && friendshipStatus === FriendshipStatus.NOT_FRIENDS) {
+                handleAddFriendAction();
+            }
             break;
           case 'intent_accept_request':
-              if (friendshipStatus === FriendshipStatus.PENDING_APPROVAL) handleRespondToRequest('accept');
-              break;
-          case 'intent_unfriend_user':
-            if (friendshipStatus === FriendshipStatus.FRIENDS) handleUnfriend();
-            break;
-          case 'intent_cancel_friend_request':
-              if (friendshipStatus === FriendshipStatus.REQUEST_SENT) handleCancelRequest();
+              if (friendshipStatus === FriendshipStatus.PENDING_APPROVAL) {
+                  handleRespondToRequest('accept');
+              }
               break;
         }
     } catch (error) {
         console.error("Error processing command in ProfileScreen:", error);
+        onSetTtsMessage(getTtsPrompt('error_generic', language));
     } finally {
         onCommandProcessed();
     }
-  }, [profileUser, onCommandProcessed, friendshipStatus, handleAddFriendAction, handleRespondToRequest, handleUnfriend, handleCancelRequest]);
+  }, [profileUser, currentUser.id, onCommandProcessed, onSetTtsMessage, language, handleAddFriendAction, friendshipStatus, handleRespondToRequest]);
 
   useEffect(() => {
     if (lastCommand) {
@@ -380,40 +352,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
     switch (friendshipStatus) {
         case FriendshipStatus.FRIENDS:
-            return (
-                <div className="relative" ref={friendMenuRef}>
-                    <button onClick={() => setIsFriendMenuOpen(p => !p)} className={`${baseClasses} bg-slate-700 text-slate-300`}>
-                        {t(language, 'profile.friends')}
-                    </button>
-                    {isFriendMenuOpen && (
-                        <div className="absolute top-full right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-20 animate-fade-in-fast">
-                            <button onClick={handleUnfriend} className="w-full text-left p-3 text-red-400 hover:bg-red-500/10">
-                                {t(language, 'profile.unfriend')}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            );
+            return <button disabled className={`${baseClasses} bg-slate-700 text-slate-300`}>{t(language, 'profile.friends')}</button>;
         case FriendshipStatus.REQUEST_SENT:
-            return (
-                 <div className="relative" ref={friendMenuRef}>
-                    <button onClick={() => setIsFriendMenuOpen(p => !p)} className={`${baseClasses} bg-slate-700 text-slate-300`}>
-                       {t(language, 'profile.requestSent')}
-                    </button>
-                     {isFriendMenuOpen && (
-                        <div className="absolute top-full right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-20 animate-fade-in-fast">
-                            <button onClick={handleCancelRequest} className="w-full text-left p-3 text-slate-200 hover:bg-slate-700/50">
-                                {t(language, 'profile.cancelRequest')}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            );
+            return <button disabled className={`${baseClasses} bg-slate-700 text-slate-300`}>{t(language, 'profile.requestSent')}</button>;
         case FriendshipStatus.PENDING_APPROVAL:
             return (
                 <div className="flex items-center gap-2">
                     <button onClick={() => handleRespondToRequest('decline')} className={`${baseClasses} bg-slate-600 text-white hover:bg-slate-500`}>Decline</button>
-                    <button onClick={() => handleRespondToRequest('accept')} className={`${baseClasses} bg-lime-600 text-black hover:bg-lime-500`}><Icon name="add-friend" className="w-5 h-5"/> Respond</button>
+                    <button onClick={() => handleRespondToRequest('accept')} className={`${baseClasses} bg-lime-600 text-black hover:bg-lime-500`}><Icon name="add-friend" className="w-5 h-5"/> Respond to Request</button>
                 </div>
             );
         default:
@@ -601,9 +547,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                                     <p onClick={() => onOpenProfile(friend.username)} className="font-bold text-slate-100 mt-2 cursor-pointer hover:underline">{friend.name}</p>
                                 </div>
                             )) : (
-                              <p className="col-span-full text-center text-slate-400 py-8">
-                                {isOwnProfile ? "You haven't added any friends yet." : `${profileUser.name} hasn't added any friends yet.`}
-                              </p>
+                                <p className="col-span-full text-center text-slate-400 py-8">
+                                    {profileUser.name} has no friends yet.
+                                </p>
                             )}
                         </div>
                     )}

@@ -1,12 +1,10 @@
 import React from 'react';
-// FIX: Import Author type to support sponsored stories which have a simplified author object.
-import { User, Story, Author } from '../types';
+import { User, Story } from '../types';
 
 interface StoriesTrayProps {
   currentUser: User;
   storiesByAuthor: {
-    // FIX: Changed author type from User to Author to accommodate both regular and ad stories.
-    author: Author;
+    author: User;
     stories: Story[];
     allViewed: boolean;
   }[];
@@ -33,12 +31,7 @@ const CreateStoryCard: React.FC<{ user: User; onClick: () => void }> = ({ user, 
 };
 
 const StoryCard: React.FC<{
-  storyGroup: { 
-    // FIX: Changed author type from User to Author.
-    author: Author; 
-    stories: Story[]; 
-    allViewed: boolean 
-  };
+  storyGroup: { author: User; stories: Story[]; allViewed: boolean };
   onClick: () => void;
 }> = ({ storyGroup, onClick }) => {
   if (!storyGroup || !storyGroup.author || !storyGroup.stories || storyGroup.stories.length === 0) {
@@ -48,14 +41,8 @@ const StoryCard: React.FC<{
   const { author, stories, allViewed } = storyGroup;
   const firstStory = stories[0];
   
-  // FIX: Added logic to handle sponsored stories correctly, using sponsor details when available.
-  const isSponsored = firstStory.isSponsored;
-  const displayName = (isSponsored ? firstStory.sponsorName : author.name) || 'Story';
-  const displayAvatar = isSponsored ? firstStory.sponsorAvatar : author.avatarUrl;
-
-  const previewUrl = (firstStory.type === 'image' || firstStory.type === 'video' 
-    ? firstStory.contentUrl 
-    : displayAvatar); // Fallback to avatar for text/voice
+  // Use story content for preview, fallback to author's avatar for text/voice stories
+  const previewUrl = firstStory.type === 'image' || firstStory.type === 'video' ? firstStory.contentUrl : author.avatarUrl;
 
   return (
     <div className="w-28 flex-shrink-0">
@@ -63,15 +50,15 @@ const StoryCard: React.FC<{
             {firstStory.type === 'video' && previewUrl ? (
                 <video src={previewUrl} muted loop autoPlay playsInline className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             ) : (
-                <img src={previewUrl || ''} alt={`${displayName}'s story`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                <img src={previewUrl} alt={`${author.name}'s story`} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
             <img 
-                src={displayAvatar || ''} 
-                alt={displayName} 
-                className={`absolute top-2 left-2 w-10 h-10 rounded-full object-cover border-4 transition-all ${!allViewed && !isSponsored ? 'border-blue-500' : 'border-transparent'}`} 
+                src={author.avatarUrl} 
+                alt={author.name} 
+                className={`absolute top-2 left-2 w-10 h-10 rounded-full object-cover border-4 transition-all ${!allViewed ? 'border-blue-500' : 'border-transparent'}`} 
             />
-            <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate">{displayName}</p>
+            <p className="absolute bottom-2 left-2 right-2 text-white text-xs font-semibold truncate">{author.name}</p>
         </button>
     </div>
   );

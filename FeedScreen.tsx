@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Post, User, ScrollState, Campaign, AppView, Story, Comment } from '../types';
 import { PostCard } from './PostCard';
@@ -9,7 +8,6 @@ import { geminiService } from '../services/geminiService';
 import RewardedAdWidget from './RewardedAdWidget';
 import { getTtsPrompt } from '../constants';
 import StoriesTray from './StoriesTray';
-// FIX: Corrected import path for firebaseService.
 import { firebaseService } from '../services/firebaseService';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -162,7 +160,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
             setIsPlaying(true);
             break;
           case 'intent_play_post':
-            if (currentPostIndexRef.current === -1 && posts.length > 0) {
+            if (currentPostIndex === -1 && posts.length > 0) {
                 isProgrammaticScroll.current = true;
                 setCurrentPostIndex(0);
             }
@@ -180,13 +178,13 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 } else {
                     onSetTtsMessage(`I couldn't find a post by ${targetName} to like.`);
                 }
-            } else if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current] && !posts[currentPostIndexRef.current].isSponsored) {
-              onReactToPost(posts[currentPostIndexRef.current].id, '👍');
+            } else if (currentPostIndex !== -1 && posts[currentPostIndex] && !posts[currentPostIndex].isSponsored) {
+              onReactToPost(posts[currentPostIndex].id, '👍');
             }
             break;
           case 'intent_share':
-            if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current]) {
-                onSharePost(posts[currentPostIndexRef.current]);
+            if (currentPostIndex !== -1 && posts[currentPostIndex]) {
+                onSharePost(posts[currentPostIndex]);
             } else {
                 onSetTtsMessage("Please select a post to share by playing it or navigating to it.");
             }
@@ -202,8 +200,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
                 } else {
                     onSetTtsMessage(`I can't find a post by ${targetName} to view comments on.`);
                 }
-            } else if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current] && !posts[currentPostIndexRef.current].isSponsored) {
-                onViewPost(posts[currentPostIndexRef.current].id);
+            } else if (currentPostIndex !== -1 && posts[currentPostIndex] && !posts[currentPostIndex].isSponsored) {
+                onViewPost(posts[currentPostIndex].id);
             }
             break;
           case 'intent_add_text_to_story':
@@ -217,8 +215,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
           case 'intent_open_profile':
             if (slots?.target_name) {
               onOpenProfile(slots.target_name as string);
-            } else if (currentPostIndexRef.current !== -1 && posts[currentPostIndexRef.current] && !posts[currentPostIndexRef.current].isSponsored) {
-                onOpenProfile(posts[currentPostIndexRef.current].author.name);
+            } else if (currentPostIndex !== -1 && posts[currentPostIndex] && !posts[currentPostIndex].isSponsored) {
+                onOpenProfile(posts[currentPostIndex].author.name);
             }
             break;
           case 'intent_create_post':
@@ -286,7 +284,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
         onCommandProcessed();
     }
   }, [
-      posts, friends, onOpenProfile, onReactToPost, onViewPost, onSetTtsMessage, onStartCreatePost, 
+      posts, currentPostIndex, friends, onOpenProfile, onReactToPost, onViewPost, onSetTtsMessage, onStartCreatePost, 
       onNavigate, onSetScrollState, setSearchResults, onCommandProcessed, fetchRewardedCampaign, onSharePost, language
   ]);
 

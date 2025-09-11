@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, ScrollState, FriendshipStatus, AppView } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -116,14 +115,6 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
      }
   }, [currentUser.id, onSetTtsMessage, language]);
 
-  const handleUnfriend = useCallback(async (targetUser: User) => {
-      if (window.confirm(`Are you sure you want to remove ${targetUser.name} from your friends?`)) {
-        await geminiService.unfriendUser(currentUser.id, targetUser.id);
-        onSetTtsMessage(getTtsPrompt('friend_removed', language, { name: targetUser.name }));
-      }
-  }, [currentUser.id, onSetTtsMessage, language]);
-
-
   const handleCommand = useCallback(async (command: string) => {
     try {
         let contextUsers: User[] = [];
@@ -151,9 +142,6 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
                     return; // early exit
                 } else if (intent === 'intent_open_profile') {
                     onOpenProfile(targetUser.username);
-                    return;
-                } else if (intent === 'intent_unfriend_user') {
-                    handleUnfriend(targetUser);
                     return;
                 }
             }
@@ -195,7 +183,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
         onCommandProcessed();
     }
 
-  }, [requests, suggestions, friends, activeTab, handleAccept, handleDecline, handleAddFriend, handleUnfriend, onCommandProcessed, onNavigate, onSetTtsMessage, onGoBack, fetchData, onOpenProfile, language]);
+  }, [requests, suggestions, friends, activeTab, handleAccept, handleDecline, handleAddFriend, onCommandProcessed, onNavigate, onSetTtsMessage, onGoBack, fetchData, onOpenProfile, language]);
 
   useEffect(() => {
     if (lastCommand) {
@@ -246,10 +234,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
                         </>
                     )}
                     {activeTab === 'all_friends' && (
-                        <>
-                            <button onClick={() => onOpenConversation(user)} className="px-3 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-lime-200 font-semibold transition-colors">Message</button>
-                             <button onClick={() => handleUnfriend(user)} className="px-3 py-2 text-sm rounded-lg bg-rose-900 hover:bg-rose-800 text-rose-300 font-semibold transition-colors">Unfriend</button>
-                        </>
+                        <button onClick={() => onOpenConversation(user)} className="px-3 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-lime-200 font-semibold transition-colors">Message</button>
                     )}
                 </UserCard>
             ))}
