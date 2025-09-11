@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, ScrollState, FriendshipStatus, AppView } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -115,6 +116,29 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
      }
   }, [currentUser.id, onSetTtsMessage, language]);
 
+  const handleUnfriend = useCallback(async (userToUnfriend: User) => {
+    if (window.confirm(`Are you sure you want to remove ${userToUnfriend.name} from your friends?`)) {
+        const success = await geminiService.unfriendUser(currentUser.id, userToUnfriend.id);
+        if (success) {
+            onSetTtsMessage(getTtsPrompt('friend_removed', language, { name: userToUnfriend.name }));
+            // The listener in UserApp will update the friends prop automatically.
+        } else {
+            onSetTtsMessage(`Could not unfriend ${userToUnfriend.name}. Please try again.`);
+        }
+    }
+  }, [currentUser.id, onSetTtsMessage, language]);
+
+  const handleCancelRequest = useCallback(async (userToCancel: User) => {
+    const success = await geminiService.cancelFriendRequest(currentUser.id, userToCancel.id);
+    if (success) {
+        onSetTtsMessage(getTtsPrompt('request_cancelled', language, { name: userToCancel.name }));
+        // Update local suggestions state for instant UI feedback, as it's not from a live listener.
+        setSuggestions(current => current.map(u => u.id === userToCancel.id ? { ...u, friendshipStatus: FriendshipStatus.NOT_FRIENDS } : u));
+    } else {
+        onSetTtsMessage(`Could not cancel request to ${userToCancel.name}.`);
+    }
+  }, [currentUser.id, onSetTtsMessage, language]);
+
   const handleCommand = useCallback(async (command: string) => {
     try {
         let contextUsers: User[] = [];
@@ -142,6 +166,12 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
                     return; // early exit
                 } else if (intent === 'intent_open_profile') {
                     onOpenProfile(targetUser.username);
+                    return;
+                } else if (intent === 'intent_unfriend_user' && activeTab === 'all_friends') {
+                    handleUnfriend(targetUser);
+                    return;
+                } else if (intent === 'intent_cancel_friend_request' && activeTab === 'suggestions') {
+                    handleCancelRequest(targetUser);
                     return;
                 }
             }
@@ -183,7 +213,7 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
         onCommandProcessed();
     }
 
-  }, [requests, suggestions, friends, activeTab, handleAccept, handleDecline, handleAddFriend, onCommandProcessed, onNavigate, onSetTtsMessage, onGoBack, fetchData, onOpenProfile, language]);
+  }, [requests, suggestions, friends, activeTab, handleAccept, handleDecline, handleAddFriend, onCommandProcessed, onNavigate, onSetTtsMessage, onGoBack, fetchData, onOpenProfile, language, handleUnfriend, handleCancelRequest]);
 
   useEffect(() => {
     if (lastCommand) {
@@ -215,7 +245,13 @@ const FriendsScreen: React.FC<FriendsScreenProps> = ({ currentUser, requests, fr
     return (
         <div className="flex flex-col gap-4 p-4 bg-slate-900/50 rounded-b-lg border border-t-0 border-lime-500/20">
             {userList.filter(Boolean).map(user => (
-                <UserCard key={user.id} user={user} onProfileClick={onOpenProfile}>
+                <UserCard
+                    key={user.id}
+                    user={user}
+                    onProfileClick={onOpenProfile}
+                    onUnfriend={activeTab === 'all_friends' ? handleUnfriend : undefined}
+                    onCancelRequest={activeTab === 'suggestions' && user.friendshipStatus === FriendshipStatus.REQUEST_SENT ? handleCancelRequest : undefined}
+                >
                     {activeTab === 'requests' && (
                         <>
                            <button onClick={() => handleDecline(user)} className="px-3 py-2 text-sm rounded-lg bg-slate-700 hover:bg-slate-600 text-lime-200 font-semibold transition-colors">Decline</button>

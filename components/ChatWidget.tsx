@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Message } from '../types';
 import { firebaseService } from '../services/firebaseService';
@@ -47,7 +46,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ currentUser, peerUser, onClose,
   if (isMinimized) {
     return (
       <button onClick={() => onHeaderClick(peerUser.id)} className="w-60 h-12 bg-slate-800 border-t-2 border-lime-500/50 rounded-t-lg flex items-center px-3 gap-2 shadow-lg hover:bg-slate-700">
-        <img src={peerUser.avatarUrl} alt={peerUser.name} className="w-8 h-8 rounded-full" />
+        <div className="relative">
+          <img src={peerUser.avatarUrl} alt={peerUser.name} className="w-8 h-8 rounded-full" />
+          <div
+              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-slate-800 ${
+                  peerUser.onlineStatus === 'online' ? 'bg-green-500' : 'bg-slate-500'
+              }`}
+          />
+        </div>
         <span className="text-white font-semibold truncate flex-grow text-left">{peerUser.name}</span>
         {unreadCount > 0 && <span className="bg-rose-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{unreadCount}</span>}
         <button onClick={(e) => { e.stopPropagation(); onClose(peerUser.id); }} className="p-1 rounded-full hover:bg-slate-600 text-slate-400">
@@ -61,7 +67,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ currentUser, peerUser, onClose,
     <div className="w-80 h-[450px] bg-slate-800 rounded-t-lg flex flex-col shadow-2xl border border-b-0 border-slate-700">
       <header onClick={() => onMinimize(peerUser.id)} className="flex-shrink-0 flex items-center justify-between p-2 bg-slate-700 rounded-t-lg cursor-pointer">
         <div className="flex items-center gap-2">
-          <img src={peerUser.avatarUrl} alt={peerUser.name} className="w-8 h-8 rounded-full" />
+          <div className="relative">
+            <img src={peerUser.avatarUrl} alt={peerUser.name} className="w-8 h-8 rounded-full" />
+             <div
+                className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-slate-700 ${
+                    peerUser.onlineStatus === 'online' ? 'bg-green-500' : 'bg-slate-500'
+                }`}
+            />
+          </div>
           <span className="text-white font-semibold">{peerUser.name}</span>
         </div>
         <div className="flex items-center">

@@ -35,6 +35,22 @@ interface ProfileScreenProps {
   onStartComment: (postId: string, commentToReplyTo?: Comment) => void;
 }
 
+const formatTimeAgo = (isoString?: string): string => {
+    if (!isoString) return 'sometime ago';
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return 'sometime ago';
+    
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return `now`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+};
+
 const AboutItem: React.FC<{iconName: React.ComponentProps<typeof Icon>['name'], children: React.ReactNode}> = ({iconName, children}) => (
     <div className="flex items-start gap-3 text-slate-300">
         <Icon name={iconName} className="w-5 h-5 text-slate-400 mt-1 flex-shrink-0"/>
@@ -431,6 +447,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                             onDragLeave={(e) => isOwnProfile && handleDragLeave(e, 'avatar')}
                         >
                            <img src={profileUser.avatarUrl} alt={profileUser.name} className="w-full h-full rounded-full border-4 border-slate-900 object-cover" />
+                            <div
+                                className={`absolute bottom-2 right-2 block h-6 w-6 rounded-full ring-4 ring-slate-900 ${
+                                    profileUser.onlineStatus === 'online' ? 'bg-green-500' : 'bg-slate-500'
+                                }`}
+                                title={profileUser.onlineStatus === 'online' ? 'Online' : `Last active: ${formatTimeAgo(profileUser.lastActiveTimestamp)}`}
+                            />
                            {isOwnProfile && (
                                 <>
                                     <input type="file" accept="image/*" ref={avatarInputRef} onChange={(e) => handleFileSelect(e, 'avatar')} className="hidden" />

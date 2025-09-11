@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Conversation, AppView, Message } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -26,6 +24,12 @@ const ConversationItem: React.FC<{ conversation: Conversation; currentUserId: st
             <button onClick={onClick} className="w-full text-left p-3 flex items-center gap-4 rounded-lg transition-colors hover:bg-slate-700/50">
                 <div className="relative flex-shrink-0">
                     <img src={peer.avatarUrl} alt={peer.name} className="w-14 h-14 rounded-full" />
+                    <div
+                        className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-slate-900 ${
+                            peer.onlineStatus === 'online' ? 'bg-green-500' : 'bg-slate-500'
+                        }`}
+                        title={peer.onlineStatus === 'online' ? 'Online' : 'Offline'}
+                    />
                 </div>
                 <div className="flex-grow overflow-hidden">
                     <p className="font-bold text-lg truncate text-slate-200">{peer.name}</p>
@@ -66,6 +70,12 @@ const ConversationItem: React.FC<{ conversation: Conversation; currentUserId: st
         <button onClick={onClick} className={`w-full text-left p-3 flex items-center gap-4 rounded-lg transition-colors hover:bg-slate-700/50 ${unreadCount > 0 ? 'bg-slate-700' : ''}`}>
             <div className="relative flex-shrink-0">
                 <img src={peer.avatarUrl} alt={peer.name} className="w-14 h-14 rounded-full" />
+                <div
+                    className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-slate-900 ${
+                        peer.onlineStatus === 'online' ? 'bg-green-500' : 'bg-slate-500'
+                    }`}
+                    title={peer.onlineStatus === 'online' ? 'Online' : 'Offline'}
+                />
             </div>
             <div className="flex-grow overflow-hidden">
                 <div className="flex justify-between items-baseline">
