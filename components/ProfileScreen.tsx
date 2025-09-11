@@ -266,10 +266,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     if (result.success) {
         setFriendshipStatus(FriendshipStatus.REQUEST_SENT);
         onSetTtsMessage(getTtsPrompt('friend_request_sent', language, { name: profileUser.name }));
-    } else if (result.reason === 'friends_of_friends') {
-        onSetTtsMessage(getTtsPrompt('friend_request_privacy_block', language, { name: profileUser.name }));
     } else {
-        onSetTtsMessage("Failed to send friend request. Please try again later.");
+        // This now handles 'permission_denied' which is likely due to the privacy setting.
+        onSetTtsMessage(getTtsPrompt('friend_request_privacy_block', language, { name: profileUser.name }));
     }
     setIsLoadingStatus(false);
   }, [profileUser, currentUser.id, onSetTtsMessage, language, isLoadingStatus]);
