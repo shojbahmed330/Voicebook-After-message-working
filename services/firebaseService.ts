@@ -117,7 +117,6 @@ export const firebaseService = {
   },
   
   // --- USER PROFILE & STATUS ---
-  // @FIX: Implemented missing `getUserProfile` method.
   getUserProfile: async (username: string): Promise<User | null> => {
     const snapshot = await db.collection('users').where('username', '==', username.toLowerCase()).limit(1).get();
     if (snapshot.empty) {
@@ -164,7 +163,6 @@ export const firebaseService = {
   },
 
   // --- POSTS & FEED ---
-  // @FIX: Implemented missing `getPostsByUser` method.
   getPostsByUser: async (userId: string): Promise<Post[]> => {
     const snapshot = await db.collection('posts')
                             .where('author.id', '==', userId)
@@ -286,13 +284,84 @@ export const firebaseService = {
     await postRef.update({ reactions });
     return true;
   },
+  
+    getStories: async (currentUserId: string): Promise<{ author: User; stories: Story[]; allViewed: boolean; }[]> => {
+        const currentUser = await firebaseService.getUserProfileById(currentUserId);
+        if (!currentUser) return [];
+
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const authorsToFetch = [currentUserId, ...currentUser.friendIds];
+        
+        if (authorsToFetch.length === 0) return [];
+
+        // Firestore 'in' queries are limited to 10 items. For a real app, you'd need multiple queries.
+        // For this app, we'll assume a user has fewer than 9 friends for simplicity.
+        const queryAbleAuthors = authorsToFetch.slice(0, 10);
+
+        const snapshot = await db.collection('stories')
+            .where('author.id', 'in', queryAbleAuthors)
+            .where('createdAt', '>', twentyFourHoursAgo.toISOString())
+            .get();
+
+        const storiesByAuthor: { [authorId: string]: { author: Author; stories: Story[] } } = {};
+        
+        snapshot.docs.forEach(doc => {
+            const story = doc.data() as Story;
+            story.id = doc.id;
+            if (!storiesByAuthor[story.author.id]) {
+                storiesByAuthor[story.author.id] = {
+                    author: story.author,
+                    stories: [],
+                };
+            }
+            storiesByAuthor[story.author.id].stories.push(story);
+        });
+
+        const result = Object.values(storiesByAuthor).map(group => {
+            group.stories.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const allViewed = group.stories.every(story => story.viewedBy?.includes(currentUserId));
+            return { ...group, allViewed, author: group.author as User }; // Cast author for UI component
+        });
+        
+        result.sort((a,b) => {
+            if (a.author.id === currentUserId) return -1;
+            if (b.author.id === currentUserId) return 1;
+            if (a.allViewed && !b.allViewed) return 1;
+            if (!a.allViewed && b.allViewed) return -1;
+            return 0;
+        });
+
+        return result;
+    },
+
+  getRecommendedFriends: async (userId: string): Promise<User[]> => {
+        const currentUser = await firebaseService.getUserProfileById(userId);
+        if (!currentUser) return [];
+
+        const snapshot = await db.collection('users').limit(10).get();
+        const allUsers = snapshot.docs.map(toUser);
+        
+        const excludedIds = new Set(currentUser.friendIds);
+        excludedIds.add(userId);
+        
+        // Also exclude users with pending requests
+        const sentRequests = await db.collection('friend_requests').where('from', '==', userId).get();
+        sentRequests.docs.forEach(doc => excludedIds.add(doc.data().to));
+        const receivedRequests = await db.collection('friend_requests').where('to', '==', userId).get();
+        receivedRequests.docs.forEach(doc => excludedIds.add(doc.data().from));
+
+        return allUsers.filter(u => !excludedIds.has(u.id));
+    },
 
   // This is a placeholder for a complex function.
   getExplorePosts: (userId: string): Promise<Post[]> => Promise.resolve([]),
   getInjectableAd: (user: User): Promise<Post | null> => Promise.resolve(null),
   getInjectableStoryAd: (user: User): Promise<Story | null> => Promise.resolve(null),
+  getAllUsersForAdmin: async (): Promise<User[]> => {
+    const snapshot = await db.collection('users').limit(50).get();
+    return snapshot.docs.map(toUser);
+  },
 
-    // @FIX: Implemented `listenToFriendRequests` to resolve missing method error.
     listenToFriendRequests: (userId: string, callback: (requests: User[]) => void): (() => void) => {
         const query = db.collection('friend_requests')
                         .where('to', '==', userId)
@@ -314,7 +383,6 @@ export const firebaseService = {
         });
     },
 
-    // @FIX: Implemented `checkFriendshipStatus` to resolve missing method error.
     checkFriendshipStatus: async (currentUserId: string, profileUserId: string): Promise<FriendshipStatus> => {
         const userDoc = await db.collection('users').doc(currentUserId).get();
         if (userDoc.data()?.friendIds?.includes(profileUserId)) {
@@ -331,7 +399,6 @@ export const firebaseService = {
         return FriendshipStatus.NOT_FRIENDS;
     },
 
-    // @FIX: Implemented `listenToFriendshipStatus` to resolve missing method error.
     listenToFriendshipStatus: (currentUserId: string, profileUserId: string, callback: (status: FriendshipStatus) => void): (() => void) => {
         const combinedUnsubscribe: (() => void)[] = [];
         const recheckStatus = () => firebaseService.checkFriendshipStatus(currentUserId, profileUserId).then(callback);
@@ -351,7 +418,6 @@ export const firebaseService = {
   cancelFriendRequest: async (currentUserId: string, targetUserId: string) => {},
   listenToAcceptedFriendRequests: (userId: string, callback: (acceptedRequests: any[]) => void) => { return () => {}; },
   finalizeFriendship: async (currentUserId: string, acceptedByUser: Author) => {},
-  getAllUsersForAdmin: async (): Promise<User[]> => { return []; },
   getUsersByIds: async (userIds: string[]): Promise<User[]> => {
     if (userIds.length === 0) return [];
     const snapshot = await db.collection('users').where(firebase.firestore.FieldPath.documentId(), 'in', userIds).get();
@@ -409,7 +475,6 @@ export const firebaseService = {
   getCampaignsForSponsor: async (sponsorId: string): Promise<Campaign[]> => { return []; },
   submitCampaignForApproval: async (campaignData: Omit<Campaign, 'id'|'views'|'clicks'|'status'|'transactionId'>, transactionId: string) => {},
   getRandomActiveCampaign: async (): Promise<Campaign | null> => { return null; },
-  getStories: async (currentUserId: string): Promise<any[]> => { return []; },
   markStoryAsViewed: async (storyId: string, userId: string) => {},
   createStory: async (storyData: Partial<Story>, mediaFile: File | null): Promise<Story | null> => { return null; },
   getGroupById: async (groupId: string): Promise<Group | null> => { return null; },

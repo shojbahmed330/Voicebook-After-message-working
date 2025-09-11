@@ -1,7 +1,8 @@
 
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Post, User, ScrollState, Campaign, AppView, Story, Comment } from '../types';
+// FIX: Add Author to imports to support sponsored stories with simplified author objects.
+import { Post, User, ScrollState, Campaign, AppView, Story, Comment, Author } from '../types';
 import { PostCard } from './PostCard';
 import CreatePostWidget from './CreatePostWidget';
 import SkeletonPostCard from './SkeletonPostCard';
@@ -48,7 +49,8 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
   const [currentPostIndex, setCurrentPostIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [rewardedCampaign, setRewardedCampaign] = useState<Campaign | null>(null);
-  const [storiesByAuthor, setStoriesByAuthor] = useState<Awaited<ReturnType<typeof geminiService.getStories>>>([]);
+  // FIX: Changed state type to use Author, allowing both regular user stories and sponsored stories.
+  const [storiesByAuthor, setStoriesByAuthor] = useState<{ author: Author; stories: Story[]; allViewed: boolean; }[]>([]);
   
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const postRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -80,7 +82,7 @@ const FeedScreen: React.FC<FeedScreenProps> = ({
               allViewed: false, // Doesn't apply to ads
           };
           // Inject the ad story at the second position
-          const combinedStories = [...realStories];
+          const combinedStories: { author: Author; stories: Story[]; allViewed: boolean; }[] = [...realStories];
           combinedStories.splice(1, 0, adStoryGroup);
           setStoriesByAuthor(combinedStories);
       } else {

@@ -1,7 +1,8 @@
 
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Story } from '../types';
+// FIX: Add Author to imports to support sponsored stories with simplified author objects.
+import { User, Story, Author } from '../types';
 import { geminiService } from '../services/geminiService';
 import Icon from './Icon';
 import Waveform from './Waveform';
@@ -9,7 +10,8 @@ import Waveform from './Waveform';
 interface StoryViewerScreenProps {
   currentUser: User;
   storiesByAuthor: {
-    author: User;
+    // FIX: Changed author type from User to Author to accommodate both regular and ad stories.
+    author: Author;
     stories: Story[];
   }[];
   initialUserIndex: number;
